@@ -1,9 +1,11 @@
-import { SignUp } from "@clerk/nextjs";
+import { SignUp, Waitlist } from "@clerk/nextjs";
+
+const signupsDisabled = process.env.SIGNUPS_DISABLED === "true";
 
 export default function Page() {
   return (
     <div className="flex flex-1 items-center justify-center py-12">
-      <SignUp />
+      {signupsDisabled ? <Waitlist /> : <SignUp />}
     </div>
   );
 }

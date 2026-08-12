@@ -35,6 +35,7 @@ never reaches the browser.
 | `CLERK_SECRET_KEY` | Clerk dashboard → your app → API Keys (keep secret) |
 | `SUPABASE_URL` | Supabase dashboard → Project Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API (keep secret) |
+| `SIGNUPS_DISABLED` | Set to `true` to replace `/sign-up` with Clerk's `<Waitlist />` instead of the sign-up form. Also enable "Waitlist" mode under Clerk Dashboard → User & Authentication → Restrictions so it's enforced by Clerk itself, not just hidden in the UI. |
 
 The same variables need to be set in the Vercel project's Environment
 Variables settings for the deployed app to work.
