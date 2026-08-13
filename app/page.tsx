@@ -1,22 +1,55 @@
 import { currentUser } from "@clerk/nextjs/server";
+import FilterBar from "@/components/FilterBar";
 import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
-import { classify, groupByCategory, sortNextActions } from "@/lib/gtd";
+import {
+  CONTEXT_SUGGESTIONS,
+  classify,
+  groupByCategory,
+  sortNextActions,
+} from "@/lib/gtd";
 
-export default async function DashboardPage() {
-  const [user, tasks] = await Promise.all([currentUser(), getTasks()]);
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; context?: string }>;
+}) {
+  const [user, allTasks, sp] = await Promise.all([
+    currentUser(),
+    getTasks(),
+    searchParams,
+  ]);
+
+  const selectedCategory = sp.category?.trim() || undefined;
+  const selectedContext = sp.context?.trim() || undefined;
+
+  const categories = Array.from(
+    new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
+  ).sort();
+  const contextsInUse = Array.from(
+    new Set(
+      allTasks
+        .map((t) => t.context?.trim())
+        .filter((c): c is string => Boolean(c))
+    )
+  ).sort();
+  const contextOptions = Array.from(
+    new Set([...CONTEXT_SUGGESTIONS, ...contextsInUse])
+  ).sort();
+
+  const tasks = allTasks.filter(
+    (t) =>
+      (!selectedCategory || t.category === selectedCategory) &&
+      (!selectedContext || t.context === selectedContext)
+  );
 
   const buckets = { inbox: [], next: [], waiting: [], someday: [], done: [] } as Record<
     string,
     typeof tasks
   >;
   for (const t of tasks) buckets[classify(t)].push(t);
-
-  const categories = Array.from(
-    new Set(tasks.map((t) => t.category?.trim()).filter(Boolean))
-  ).sort();
 
   const nextByCategory = groupByCategory(sortNextActions(buckets.next));
   const doneRecent = [...buckets.done]
@@ -42,6 +75,14 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      <FilterBar
+        basePath="/"
+        categories={categories}
+        contexts={contextsInUse}
+        selectedCategory={selectedCategory}
+        selectedContext={selectedContext}
+      />
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Inbox" value={buckets.inbox.length} tone="warning" />
         <StatCard label="Next Actions" value={buckets.next.length} tone="accent" />
@@ -49,7 +90,7 @@ export default async function DashboardPage() {
         <StatCard label="Someday / Maybe" value={buckets.someday.length} tone="muted" />
       </div>
 
-      <QuickCapture categories={categories} />
+      <QuickCapture categories={categories} contexts={contextOptions} />
 
       <Section
         icon="📥"
@@ -62,7 +103,7 @@ export default async function DashboardPage() {
         ) : (
           <ul className="space-y-2">
             {buckets.inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -85,7 +126,7 @@ export default async function DashboardPage() {
                 </h3>
                 <ul className="space-y-2">
                   {items.map((t) => (
-                    <TaskItem key={t.id} task={t} categories={categories} />
+                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
                   ))}
                 </ul>
               </div>
@@ -105,7 +146,7 @@ export default async function DashboardPage() {
         ) : (
           <ul className="space-y-2">
             {buckets.waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -123,7 +164,7 @@ export default async function DashboardPage() {
         ) : (
           <ul className="space-y-2">
             {buckets.someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -140,7 +181,7 @@ export default async function DashboardPage() {
         ) : (
           <ul className="space-y-2">
             {doneRecent.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}

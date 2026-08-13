@@ -8,6 +8,7 @@ export type Task = {
   due_date: string | null;
   date_added: string;
   status: string;
+  context: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -16,6 +17,21 @@ export type Bucket = "inbox" | "next" | "waiting" | "someday" | "done";
 
 export const STATUS_OPTIONS = ["Open", "Waiting", "Someday", "Done"] as const;
 export const LEVEL_OPTIONS = ["", "Low", "Medium", "Medium-High", "High"] as const;
+
+/**
+ * GTD "context" is the tool/location a task requires, distinct from
+ * `category` (an area of focus like Work/Home/Shopping). These are the
+ * canonical suggestions offered alongside whatever contexts are already
+ * in use, so the field doesn't start out empty.
+ */
+export const CONTEXT_SUGGESTIONS = [
+  "Desk",
+  "Computer",
+  "Phone",
+  "Errands",
+  "Home",
+  "Anywhere",
+] as const;
 
 /**
  * GTD's clarify step maps every captured item onto one of five outcomes.

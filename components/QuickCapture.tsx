@@ -3,7 +3,13 @@
 import { useRef, useState, useTransition } from "react";
 import { createTask } from "@/app/actions";
 
-export default function QuickCapture({ categories }: { categories: string[] }) {
+export default function QuickCapture({
+  categories,
+  contexts,
+}: {
+  categories: string[];
+  contexts: string[];
+}) {
   const [isPending, startTransition] = useTransition();
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +60,17 @@ export default function QuickCapture({ categories }: { categories: string[] }) {
       </button>
 
       {showDetails && (
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
           <input
             name="category"
             list="known-categories"
             placeholder="Category (e.g. Work)"
+            className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <input
+            name="context"
+            list="known-contexts"
+            placeholder="Context (e.g. Desk)"
             className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <input
@@ -69,13 +81,18 @@ export default function QuickCapture({ categories }: { categories: string[] }) {
           <input
             name="notes"
             placeholder="Notes"
-            className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent sm:col-span-1"
+            className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
       )}
 
       <datalist id="known-categories">
         {categories.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
+      <datalist id="known-contexts">
+        {contexts.map((c) => (
           <option key={c} value={c} />
         ))}
       </datalist>

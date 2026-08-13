@@ -21,10 +21,12 @@ function levelBadgeClass(level: string | null) {
 export default function TaskItem({
   task,
   categories,
+  contexts,
   defaultOpen = false,
 }: {
   task: Task;
   categories: string[];
+  contexts: string[];
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -60,6 +62,11 @@ export default function TaskItem({
             <span className="rounded-full border border-card-border px-2 py-0.5 text-[11px] text-muted">
               {task.category}
             </span>
+            {task.context && (
+              <span className="rounded-full border border-card-border bg-card-border/30 px-2 py-0.5 text-[11px] text-muted">
+                @{task.context}
+              </span>
+            )}
             {task.importance && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] ${levelBadgeClass(
@@ -247,6 +254,16 @@ export default function TaskItem({
               className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
             />
           </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted">Context</span>
+            <input
+              name="context"
+              defaultValue={task.context ?? ""}
+              list="known-contexts"
+              placeholder="e.g. Desk"
+              className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
+            />
+          </label>
           <label className="col-span-2 flex flex-col gap-1 sm:col-span-4">
             <span className="text-[11px] text-muted">Notes</span>
             <textarea
@@ -274,6 +291,11 @@ export default function TaskItem({
           </div>
           <datalist id="known-categories">
             {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <datalist id="known-contexts">
+            {contexts.map((c) => (
               <option key={c} value={c} />
             ))}
           </datalist>

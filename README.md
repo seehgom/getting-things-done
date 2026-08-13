@@ -7,13 +7,24 @@ describes: capture → clarify → organize → reflect → engage.
 
 - **Inbox** — captured but not yet clarified (no urgency, importance, or
   due date set).
-- **Next Actions** — clarified, actionable items grouped by category
-  (used as GTD "context"), sorted by importance/urgency and due date.
+- **Next Actions** — clarified, actionable items grouped by category,
+  sorted by importance/urgency and due date.
 - **Waiting For** — things you're expecting from someone else.
 - **Someday / Maybe** — not committed to right now, reviewed periodically.
 - **Weekly Review** (`/review`) — a dedicated page for the book's "reflect"
   step: overdue items, stalled next actions, waiting-for follow-ups, and
   someday/maybe items ready to promote.
+
+Both pages have a **filter bar** for narrowing the visible tasks down to
+one category (e.g. just Shopping) and/or one context (e.g. just @Desk) —
+selections are stored in the URL (`?category=&context=`) so filtered views
+are shareable/bookmarkable.
+
+Each task can also carry a GTD **context** — the tool or location it
+requires (`@Desk`, `@Computer`, `@Phone`, `@Errands`, `@Home`, `@Anywhere`,
+or anything else you type) — separate from `category`, which is more of an
+area of focus (Work/Home/Shopping). Set it from Quick Capture or a task's
+Edit form.
 
 Sign-in is gated by Clerk — only accounts you allow can see or edit your
 tasks. Task data is only ever read/written server-side (Server
@@ -42,9 +53,12 @@ Variables settings for the deployed app to work.
 
 ## Data model
 
-The app reads/writes the existing `public.tasks` table as-is — no schema
-changes were made, so your voice-dictation flow into Supabase keeps
-working unchanged. Columns used: `category`, `task`, `notes`, `urgency`,
-`importance`, `due_date`, `status`. GTD buckets (Inbox / Next / Waiting /
-Someday / Done) are derived from `status` and whether urgency/importance/
-due date have been set — see `lib/gtd.ts`.
+The app reads/writes the existing `public.tasks` table. Columns used:
+`category`, `task`, `notes`, `urgency`, `importance`, `due_date`, `status`,
+`context`. GTD buckets (Inbox / Next / Waiting / Someday / Done) are
+derived from `status` and whether urgency/importance/due date have been
+set — see `lib/gtd.ts`.
+
+`context` (nullable `text`) was added via migration on top of the table
+your voice-dictation flow already writes to — existing writes that don't
+set it are unaffected and just leave it `null`.

@@ -24,6 +24,7 @@ export async function createTask(formData: FormData) {
   const category = String(formData.get("category") ?? "").trim() || "Inbox";
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const due_date = String(formData.get("due_date") ?? "").trim() || null;
+  const context = String(formData.get("context") ?? "").trim() || null;
 
   const supabase = supabaseServer();
   const { error } = await supabase.from("tasks").insert({
@@ -31,6 +32,7 @@ export async function createTask(formData: FormData) {
     category,
     notes,
     due_date,
+    context,
     status: "Open",
   });
   if (error) throw new Error(error.message);
@@ -45,6 +47,7 @@ export type TaskUpdate = {
   urgency?: string | null;
   importance?: string | null;
   due_date?: string | null;
+  context?: string | null;
   status?: string;
 };
 
@@ -70,6 +73,7 @@ export async function updateTaskAction(formData: FormData) {
     urgency: String(formData.get("urgency") ?? "").trim() || null,
     importance: String(formData.get("importance") ?? "").trim() || null,
     due_date: String(formData.get("due_date") ?? "").trim() || null,
+    context: String(formData.get("context") ?? "").trim() || null,
     status: String(formData.get("status") ?? "Open").trim() || "Open",
   };
   await updateTask(id, fields);

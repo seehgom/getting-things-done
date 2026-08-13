@@ -1,13 +1,38 @@
+import FilterBar from "@/components/FilterBar";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
-import { classify, isOverdue, isStale } from "@/lib/gtd";
+import { CONTEXT_SUGGESTIONS, classify, isOverdue, isStale } from "@/lib/gtd";
 
-export default async function WeeklyReviewPage() {
-  const tasks = await getTasks();
+export default async function WeeklyReviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; context?: string }>;
+}) {
+  const [allTasks, sp] = await Promise.all([getTasks(), searchParams]);
+
+  const selectedCategory = sp.category?.trim() || undefined;
+  const selectedContext = sp.context?.trim() || undefined;
+
   const categories = Array.from(
-    new Set(tasks.map((t) => t.category?.trim()).filter(Boolean))
+    new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
   ).sort();
+  const contextsInUse = Array.from(
+    new Set(
+      allTasks
+        .map((t) => t.context?.trim())
+        .filter((c): c is string => Boolean(c))
+    )
+  ).sort();
+  const contextOptions = Array.from(
+    new Set([...CONTEXT_SUGGESTIONS, ...contextsInUse])
+  ).sort();
+
+  const tasks = allTasks.filter(
+    (t) =>
+      (!selectedCategory || t.category === selectedCategory) &&
+      (!selectedContext || t.context === selectedContext)
+  );
 
   const notDone = tasks.filter((t) => classify(t) !== "done");
   const overdue = notDone.filter(isOverdue);
@@ -45,6 +70,14 @@ export default async function WeeklyReviewPage() {
         </p>
       )}
 
+      <FilterBar
+        basePath="/review"
+        categories={categories}
+        contexts={contextsInUse}
+        selectedCategory={selectedCategory}
+        selectedContext={selectedContext}
+      />
+
       <Section
         icon="🔥"
         title="Overdue"
@@ -56,7 +89,7 @@ export default async function WeeklyReviewPage() {
         ) : (
           <ul className="space-y-2">
             {overdue.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -73,7 +106,7 @@ export default async function WeeklyReviewPage() {
         ) : (
           <ul className="space-y-2">
             {stale.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -90,7 +123,7 @@ export default async function WeeklyReviewPage() {
         ) : (
           <ul className="space-y-2">
             {waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -108,7 +141,7 @@ export default async function WeeklyReviewPage() {
         ) : (
           <ul className="space-y-2">
             {someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
@@ -126,7 +159,7 @@ export default async function WeeklyReviewPage() {
         ) : (
           <ul className="space-y-2">
             {inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
             ))}
           </ul>
         )}
