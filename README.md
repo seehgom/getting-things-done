@@ -1,5 +1,7 @@
 # thnk — a GTD-inspired task tracker
 
+`main` is the production branch — it's what the deployed app builds from.
+
 A small Next.js app that reads and manages the `tasks` table in the
 Supabase project **thnk**, which you populate by dictating tasks via voice.
 The UI organizes those tasks the way David Allen's *Getting Things Done*
