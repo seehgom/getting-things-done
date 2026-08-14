@@ -5,6 +5,7 @@ import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
 import {
+  CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   classify,
   groupByCategory,
@@ -25,8 +26,11 @@ export default async function DashboardPage({
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
 
-  const categories = Array.from(
+  const categoriesInUse = Array.from(
     new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
+  ).sort();
+  const categories = Array.from(
+    new Set([...CATEGORY_SUGGESTIONS, ...categoriesInUse])
   ).sort();
   const contextsInUse = Array.from(
     new Set(

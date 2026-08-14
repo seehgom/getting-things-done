@@ -34,6 +34,13 @@ export const CONTEXT_SUGGESTIONS = [
 ] as const;
 
 /**
+ * Canonical `category` suggestions, offered alongside whatever categories
+ * are already in use so Work/Home/Shopping filters are always available
+ * even before any task has been tagged with them.
+ */
+export const CATEGORY_SUGGESTIONS = ["Work", "Home", "Shopping"] as const;
+
+/**
  * GTD's clarify step maps every captured item onto one of five outcomes.
  * We derive that outcome from the free-text `status` field (set by voice
  * dictation or the UI) plus whether urgency/importance/due_date have been
