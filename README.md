@@ -55,6 +55,19 @@ never reaches the browser.
 The same variables need to be set in the Vercel project's Environment
 Variables settings for the deployed app to work.
 
+## Deploying to Vercel
+
+The repo needs no `vercel.json` — it's a standard Next.js app and Vercel
+auto-detects the framework, root directory, and build command. When
+linking a (new) Vercel project to this repo:
+
+1. Set the **Production Branch** (Project Settings → Git) to `main`.
+2. Add all the environment variables listed above (Project Settings →
+   Environment Variables), scoped to Production (and Preview, if you want
+   preview deployments to work too).
+3. Deploy — `npm run build` / `next build` is the build command, no
+   overrides needed.
+
 ## Data model
 
 The app reads/writes the existing `public.tasks` table. Columns used:
