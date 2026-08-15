@@ -2,7 +2,13 @@ import FilterBar from "@/components/FilterBar";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
-import { CONTEXT_SUGGESTIONS, classify, isOverdue, isStale } from "@/lib/gtd";
+import {
+  CATEGORY_SUGGESTIONS,
+  CONTEXT_SUGGESTIONS,
+  classify,
+  isOverdue,
+  isStale,
+} from "@/lib/gtd";
 
 export default async function WeeklyReviewPage({
   searchParams,
@@ -14,8 +20,11 @@ export default async function WeeklyReviewPage({
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
 
-  const categories = Array.from(
+  const categoriesInUse = Array.from(
     new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
+  ).sort();
+  const categories = Array.from(
+    new Set([...CATEGORY_SUGGESTIONS, ...categoriesInUse])
   ).sort();
   const contextsInUse = Array.from(
     new Set(

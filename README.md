@@ -16,9 +16,11 @@ describes: capture → clarify → organize → reflect → engage.
   someday/maybe items ready to promote.
 
 Both pages have a **filter bar** for narrowing the visible tasks down to
-one category (e.g. just Shopping) and/or one context (e.g. just @Desk) —
-selections are stored in the URL (`?category=&context=`) so filtered views
-are shareable/bookmarkable.
+one category and/or one context — selections are stored in the URL
+(`?category=&context=`) so filtered views are shareable/bookmarkable. The
+category filter always offers **Work**, **Home**, and **Shopping**
+alongside any other categories already in use, so those filters are there
+from the start even before a task has been tagged with them.
 
 Each task can also carry a GTD **context** — the tool or location it
 requires (`@Desk`, `@Computer`, `@Phone`, `@Errands`, `@Home`, `@Anywhere`,
