@@ -55,6 +55,28 @@ never reaches the browser.
 The same variables need to be set in the Vercel project's Environment
 Variables settings for the deployed app to work.
 
+## Testing the UI (Clerk-gated)
+
+Every route except `/sign-in` and `/sign-up` is behind Clerk auth
+(`proxy.ts` — this is where Next's `middleware.ts` moved to in this
+version). To exercise the UI in Playwright without a human clicking
+through a sign-in form each run, [`@clerk/testing`](https://clerk.com/docs/testing/playwright/overview)
+drives the real sign-in flow programmatically:
+
+1. Set `E2E_CLERK_USER_EMAIL` in `.env.local` to the email of an existing
+   user on this app's Clerk instance (any user works — no password or OTP
+   needed; `@clerk/testing` issues a sign-in token for that email via the
+   Clerk Backend API using `CLERK_SECRET_KEY`).
+2. `npm run test:e2e`
+
+This runs a `setup` project (`e2e/auth.setup.ts`) that signs in once and
+saves the session to `playwright/.clerk/user.json` (gitignored), which the
+rest of the suite reuses via `storageState` so each spec starts already
+authenticated. `e2e/global.setup.ts` fetches a Clerk testing token so
+requests bypass bot protection. The dev server is started automatically
+(`webServer` in `playwright.config.ts`) unless one is already running on
+port 3000.
+
 ## Deploying to Vercel
 
 The repo needs no `vercel.json` — it's a standard Next.js app and Vercel
