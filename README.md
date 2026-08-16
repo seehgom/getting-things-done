@@ -16,8 +16,16 @@ describes: capture → clarify → organize → reflect → engage.
 - **Weekly Review** (`/review`) — a dedicated page for the book's "reflect"
   step: overdue items, stalled next actions, waiting-for follow-ups, and
   someday/maybe items ready to promote.
+- **Horizons of Focus** (`/horizons`) — Allen's altitude model above ground
+  level: Current Projects (10k ft), Areas of Responsibility (20k ft), Goals
+  (30k ft), Vision (40k ft), and Purpose & Values (50k ft). Each altitude
+  holds free-text entries you add/edit/archive, stored in their own
+  `horizons` table (separate from `tasks`, since these are reviewed
+  periodically rather than acted on directly). Ground level (0 ft) isn't
+  duplicated here — it's just the Next Actions bucket on the dashboard.
 
-Both pages have a **filter bar** for narrowing the visible tasks down to
+Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
+for narrowing the visible tasks down to
 one category and/or one context — selections are stored in the URL
 (`?category=&context=`) so filtered views are shareable/bookmarkable. The
 category filter always offers **Work**, **Home**, and **Shopping**
@@ -101,3 +109,7 @@ set — see `lib/gtd.ts`.
 `context` (nullable `text`) was added via migration on top of the table
 your voice-dictation flow already writes to — existing writes that don't
 set it are unaffected and just leave it `null`.
+
+The Horizons page reads/writes a separate `public.horizons` table:
+`level` (`10k` | `20k` | `30k` | `40k` | `50k`), `title`, `notes`, `status`
+(`Active` | `Someday` | `Archived`). See `lib/horizons.ts`.

@@ -21,3 +21,16 @@ test("weekly review page loads", async ({ page }) => {
     page.getByRole("heading", { name: "Weekly Review" })
   ).toBeVisible();
 });
+
+test("horizons page lists all altitude levels", async ({ page }) => {
+  await page.goto("/horizons");
+
+  await expect(
+    page.getByRole("heading", { name: "Horizons of Focus" })
+  ).toBeVisible();
+  await expect(page.getByText(/50,000 ft/)).toBeVisible();
+  await expect(page.getByText(/40,000 ft/)).toBeVisible();
+  await expect(page.getByText(/30,000 ft/)).toBeVisible();
+  await expect(page.getByText(/20,000 ft/)).toBeVisible();
+  await expect(page.getByText(/10,000 ft/)).toBeVisible();
+});
