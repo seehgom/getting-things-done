@@ -49,6 +49,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   >
                     Weekly Review
                   </Link>
+                  <Link
+                    href="/horizons"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Horizons
+                  </Link>
                   <UserButton />
                 </Show>
                 <Show when="signed-out">
