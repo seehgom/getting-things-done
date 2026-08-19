@@ -9,9 +9,14 @@ export type Task = {
   date_added: string;
   status: string;
   context: string | null;
+  offense_defense: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** A task that's been marked Done and moved out of `tasks` into the
+ * `completed_tasks` archive — see lib/tasks.ts#getCompletedTasks. */
+export type CompletedTask = Task & { completed_at: string };
 
 export type Bucket = "inbox" | "next" | "waiting" | "someday" | "done";
 
@@ -39,6 +44,14 @@ export const CONTEXT_SUGGESTIONS = [
  * even before any task has been tagged with them.
  */
 export const CATEGORY_SUGGESTIONS = ["Work", "Home", "Shopping"] as const;
+
+/**
+ * "Offense" (proactively moving a goal forward) vs "Defense" (keeping
+ * existing commitments from slipping) — a second, orthogonal way to
+ * classify a task alongside `category`. Unlike category/context this is a
+ * fixed two-option classification rather than open-ended free text.
+ */
+export const OFFENSE_DEFENSE_OPTIONS = ["Offense", "Defense"] as const;
 
 /**
  * GTD's clarify step maps every captured item onto one of five outcomes.
@@ -110,4 +123,44 @@ export function isStale(t: Task, days = 7): boolean {
   const bucket = classify(t);
   if (bucket !== "next" && bucket !== "inbox") return false;
   return daysSince(t.updated_at) >= days;
+}
+
+/** Preset windows for the History page's performance breakdown. */
+export const HISTORY_RANGES = [
+  { key: "7d", label: "Last week", days: 7 },
+  { key: "30d", label: "Last month", days: 30 },
+  { key: "90d", label: "Last 3 months", days: 90 },
+  { key: "180d", label: "Last 6 months", days: 180 },
+  { key: "365d", label: "Last year", days: 365 },
+  { key: "all", label: "All time", days: null },
+] as const;
+
+export type HistoryRangeKey = (typeof HISTORY_RANGES)[number]["key"];
+
+export function resolveHistoryRange(key?: string) {
+  return HISTORY_RANGES.find((r) => r.key === key) ?? HISTORY_RANGES[1];
+}
+
+export function filterCompletedByRange(
+  tasks: CompletedTask[],
+  days: number | null
+): CompletedTask[] {
+  if (days === null) return tasks;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return tasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff);
+}
+
+/** Groups tasks by a key, sorted by count descending. */
+export function countBy<T>(
+  items: T[],
+  keyFn: (item: T) => string
+): { key: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = keyFn(item);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count);
 }

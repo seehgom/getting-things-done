@@ -23,6 +23,11 @@ describes: capture → clarify → organize → reflect → engage.
   `horizons` table (separate from `tasks`, since these are reviewed
   periodically rather than acted on directly). Ground level (0 ft) isn't
   duplicated here — it's just the Next Actions bucket on the dashboard.
+- **History** (`/history`) — where finished work goes. Marking a task Done
+  moves it out of the active list into the `completed_tasks` archive (see
+  Data model below), so this page is the record of what you actually got
+  done. Break it down by preset windows (last week/month/3 months/6
+  months/year/all time) and by category and offense/defense.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -37,6 +42,12 @@ requires (`@Desk`, `@Computer`, `@Phone`, `@Errands`, `@Home`, `@Anywhere`,
 or anything else you type) — separate from `category`, which is more of an
 area of focus (Work/Home/Shopping). Set it from Quick Capture or a task's
 Edit form.
+
+Every task in the list also has a **Classify** row for one-click tagging:
+**Work / Home / Shopping** for category, and **Offense / Defense** for
+whether it's proactively moving something forward (Offense) or keeping an
+existing commitment from slipping (Defense). Both are also editable from
+Quick Capture and the Edit form.
 
 Sign-in is gated by Clerk — only accounts you allow can see or edit your
 tasks. Task data is only ever read/written server-side (Server
@@ -102,13 +113,22 @@ linking a (new) Vercel project to this repo:
 
 The app reads/writes the existing `public.tasks` table. Columns used:
 `category`, `task`, `notes`, `urgency`, `importance`, `due_date`, `status`,
-`context`. GTD buckets (Inbox / Next / Waiting / Someday / Done) are
-derived from `status` and whether urgency/importance/due date have been
-set — see `lib/gtd.ts`.
+`context`, `offense_defense`. GTD buckets (Inbox / Next / Waiting /
+Someday / Done) are derived from `status` and whether urgency/importance/
+due date have been set — see `lib/gtd.ts`.
 
-`context` (nullable `text`) was added via migration on top of the table
-your voice-dictation flow already writes to — existing writes that don't
-set it are unaffected and just leave it `null`.
+`context` and `offense_defense` (both nullable `text`) were added via
+migration on top of the table your voice-dictation flow already writes
+to — existing writes that don't set them are unaffected and just leave
+them `null`.
+
+Marking a task Done doesn't leave it sitting in `tasks` — `completeTask()`
+(`app/actions.ts`) moves it into `public.completed_tasks`, a separate
+table with the same columns plus `completed_at`, and deletes the row from
+`tasks`. This is what keeps the active list from accumulating finished
+work and is what `/history` reads from. Any update that sets `status` to
+`Done` (the quick "✓ Done" button, or the Edit form's Status field) is
+routed through this same path.
 
 The Horizons page reads/writes a separate `public.horizons` table:
 `level` (`10k` | `20k` | `30k` | `40k` | `50k`), `title`, `notes`, `status`

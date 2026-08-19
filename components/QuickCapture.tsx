@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createTask } from "@/app/actions";
+import { OFFENSE_DEFENSE_OPTIONS } from "@/lib/gtd";
 
 export default function QuickCapture({
   categories,
@@ -56,11 +57,13 @@ export default function QuickCapture({
         onClick={() => setShowDetails((v) => !v)}
         className="mt-2 text-xs text-muted hover:text-foreground"
       >
-        {showDetails ? "− Hide details" : "+ Add category, due date, notes"}
+        {showDetails
+          ? "− Hide details"
+          : "+ Add category, offense/defense, due date, notes"}
       </button>
 
       {showDetails && (
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <input
             name="category"
             list="known-categories"
@@ -73,6 +76,18 @@ export default function QuickCapture({
             placeholder="Context (e.g. Desk)"
             className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
+          <select
+            name="offense_defense"
+            defaultValue=""
+            className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-muted outline-none focus:border-accent"
+          >
+            <option value="">Offense / Defense</option>
+            {OFFENSE_DEFENSE_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
           <input
             name="due_date"
             type="date"

@@ -1,4 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
+import Link from "next/link";
 import FilterBar from "@/components/FilterBar";
 import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
@@ -56,9 +57,6 @@ export default async function DashboardPage({
   for (const t of tasks) buckets[classify(t)].push(t);
 
   const nextByCategory = groupByCategory(sortNextActions(buckets.next));
-  const doneRecent = [...buckets.done]
-    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-    .slice(0, 15);
 
   const firstName = user?.firstName ?? "there";
   const today = new Date().toLocaleDateString(undefined, {
@@ -174,22 +172,19 @@ export default async function DashboardPage({
         )}
       </Section>
 
-      <Section
-        icon="✅"
-        title="Recently Done"
-        count={buckets.done.length}
-        defaultOpen={false}
+      <Link
+        href="/history"
+        className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 text-sm shadow-sm hover:border-accent"
       >
-        {doneRecent.length === 0 ? (
-          <EmptyState text="Nothing completed yet." />
-        ) : (
-          <ul className="space-y-2">
-            {doneRecent.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
-            ))}
-          </ul>
-        )}
-      </Section>
+        <span>
+          <span aria-hidden>✅</span> Done tasks move to{" "}
+          <span className="font-medium">History</span> — see what you got
+          done and how it breaks down by category and offense/defense.
+        </span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
+      </Link>
     </div>
   );
 }

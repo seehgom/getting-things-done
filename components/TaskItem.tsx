@@ -3,11 +3,20 @@
 import { useState, useTransition } from "react";
 import {
   deleteTask,
+  setCategory,
+  setOffenseDefense,
   setStatus,
   touchTask,
   updateTaskAction,
 } from "@/app/actions";
-import { isOverdue, LEVEL_OPTIONS, STATUS_OPTIONS, type Task } from "@/lib/gtd";
+import {
+  CATEGORY_SUGGESTIONS,
+  isOverdue,
+  LEVEL_OPTIONS,
+  OFFENSE_DEFENSE_OPTIONS,
+  STATUS_OPTIONS,
+  type Task,
+} from "@/lib/gtd";
 
 function levelBadgeClass(level: string | null) {
   const v = (level || "").toLowerCase();
@@ -35,6 +44,16 @@ export default function TaskItem({
 
   function quickStatus(status: string) {
     startTransition(() => setStatus(task.id, status));
+  }
+
+  function quickCategory(category: string) {
+    startTransition(() => setCategory(task.id, category));
+  }
+
+  function quickOffenseDefense(value: string) {
+    startTransition(() =>
+      setOffenseDefense(task.id, task.offense_defense === value ? null : value)
+    );
   }
 
   function handleTouch() {
@@ -65,6 +84,17 @@ export default function TaskItem({
             {task.context && (
               <span className="rounded-full border border-card-border bg-card-border/30 px-2 py-0.5 text-[11px] text-muted">
                 @{task.context}
+              </span>
+            )}
+            {task.offense_defense && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                  task.offense_defense === "Offense"
+                    ? "bg-accent/15 text-accent"
+                    : "bg-info-bg text-info"
+                }`}
+              >
+                {task.offense_defense}
               </span>
             )}
             {task.importance && (
@@ -175,6 +205,43 @@ export default function TaskItem({
         </div>
       )}
 
+      {!open && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-muted">Classify:</span>
+          {CATEGORY_SUGGESTIONS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => quickCategory(c)}
+              disabled={isPending}
+              className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                task.category === c
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-card-border text-muted hover:bg-card-border/40"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+          <span className="mx-1 text-card-border">|</span>
+          {OFFENSE_DEFENSE_OPTIONS.map((o) => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => quickOffenseDefense(o)}
+              disabled={isPending}
+              className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                task.offense_defense === o
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-card-border text-muted hover:bg-card-border/40"
+              }`}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+
       {open && (
         <form
           action={handleSave}
@@ -263,6 +330,21 @@ export default function TaskItem({
               placeholder="e.g. Desk"
               className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
             />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted">Offense / Defense</span>
+            <select
+              name="offense_defense"
+              defaultValue={task.offense_defense ?? ""}
+              className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
+            >
+              <option value="">—</option>
+              {OFFENSE_DEFENSE_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="col-span-2 flex flex-col gap-1 sm:col-span-4">
             <span className="text-[11px] text-muted">Notes</span>

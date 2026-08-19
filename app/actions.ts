@@ -13,6 +13,7 @@ async function requireUser() {
 function revalidateAll() {
   revalidatePath("/");
   revalidatePath("/review");
+  revalidatePath("/history");
 }
 
 export async function createTask(formData: FormData) {
@@ -25,6 +26,8 @@ export async function createTask(formData: FormData) {
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const due_date = String(formData.get("due_date") ?? "").trim() || null;
   const context = String(formData.get("context") ?? "").trim() || null;
+  const offense_defense =
+    String(formData.get("offense_defense") ?? "").trim() || null;
 
   const supabase = supabaseServer();
   const { error } = await supabase.from("tasks").insert({
@@ -33,6 +36,7 @@ export async function createTask(formData: FormData) {
     notes,
     due_date,
     context,
+    offense_defense,
     status: "Open",
   });
   if (error) throw new Error(error.message);
@@ -48,11 +52,19 @@ export type TaskUpdate = {
   importance?: string | null;
   due_date?: string | null;
   context?: string | null;
+  offense_defense?: string | null;
   status?: string;
 };
 
+/** Any update that sets status to Done is routed through completeTask so
+ * a task never sits in `tasks` marked Done — it moves to the archive. */
 export async function updateTask(id: string, fields: TaskUpdate) {
   await requireUser();
+
+  if (fields.status && fields.status.toLowerCase() === "done") {
+    await completeTask(id, fields);
+    return;
+  }
 
   const supabase = supabaseServer();
   const { error } = await supabase
@@ -74,6 +86,7 @@ export async function updateTaskAction(formData: FormData) {
     importance: String(formData.get("importance") ?? "").trim() || null,
     due_date: String(formData.get("due_date") ?? "").trim() || null,
     context: String(formData.get("context") ?? "").trim() || null,
+    offense_defense: String(formData.get("offense_defense") ?? "").trim() || null,
     status: String(formData.get("status") ?? "Open").trim() || "Open",
   };
   await updateTask(id, fields);
@@ -81,6 +94,48 @@ export async function updateTaskAction(formData: FormData) {
 
 export async function setStatus(id: string, status: string) {
   await updateTask(id, { status });
+}
+
+export async function setCategory(id: string, category: string) {
+  await updateTask(id, { category });
+}
+
+export async function setOffenseDefense(id: string, value: string | null) {
+  await updateTask(id, { offense_defense: value });
+}
+
+/** Moves a task out of `tasks` into the `completed_tasks` archive — the
+ * single place "done" is recorded, so History can analyze it later
+ * without the active list accumulating finished items. */
+export async function completeTask(id: string, overrides: TaskUpdate = {}) {
+  await requireUser();
+
+  const supabase = supabaseServer();
+  const { data: row, error: fetchError } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Task not found");
+
+  const now = new Date().toISOString();
+  const { error: insertError } = await supabase.from("completed_tasks").insert({
+    ...row,
+    ...overrides,
+    status: "Done",
+    updated_at: now,
+    completed_at: now,
+  });
+  if (insertError) throw new Error(insertError.message);
+
+  const { error: deleteError } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", id);
+  if (deleteError) throw new Error(deleteError.message);
+
+  revalidateAll();
 }
 
 /** Bumps updated_at without changing anything else — used during the
