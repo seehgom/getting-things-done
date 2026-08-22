@@ -10,6 +10,18 @@ export type Task = {
   status: string;
   context: string | null;
   offense_defense: string | null;
+  project_id: string | null;
+  is_next_action: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A GTD "project" — any outcome that takes more than one task to
+ * complete. Tasks opt into a project via `Task.project_id`. */
+export type Project = {
+  id: string;
+  name: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +113,33 @@ export function sortNextActions(tasks: Task[]): Task[] {
     const bd = b.due_date ?? "9999-99-99";
     return ad.localeCompare(bd);
   });
+}
+
+/**
+ * A project's status isn't stored — it's derived from whether any of its
+ * (still-open) tasks is flagged as the project's next action. No next
+ * action queued means nothing is set up to move it forward right now, so
+ * per GTD it reads as Someday/Maybe rather than Active.
+ */
+export type ProjectStatus = "Active" | "Someday/Maybe";
+
+export function deriveProjectStatus(
+  projectId: string,
+  tasks: Task[]
+): ProjectStatus {
+  const hasNext = tasks.some(
+    (t) => t.project_id === projectId && t.is_next_action
+  );
+  return hasNext ? "Active" : "Someday/Maybe";
+}
+
+export function buildProjectStatusMap(
+  projects: Project[],
+  tasks: Task[]
+): Map<string, ProjectStatus> {
+  const map = new Map<string, ProjectStatus>();
+  for (const p of projects) map.set(p.id, deriveProjectStatus(p.id, tasks));
+  return map;
 }
 
 export function groupByCategory(tasks: Task[]): Map<string, Task[]> {

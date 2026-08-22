@@ -5,7 +5,9 @@ import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
+import { getProjects } from "@/lib/projects";
 import {
+  buildProjectStatusMap,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   classify,
@@ -18,11 +20,17 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [user, allTasks, sp] = await Promise.all([
+  const [user, allTasks, projects, sp] = await Promise.all([
     currentUser(),
     getTasks(),
+    getProjects(),
     searchParams,
   ]);
+
+  const projectStatusById = buildProjectStatusMap(projects, allTasks);
+  const stalledProjects = projects.filter(
+    (p) => projectStatusById.get(p.id) === "Someday/Maybe"
+  );
 
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
@@ -92,7 +100,31 @@ export default async function DashboardPage({
         <StatCard label="Someday / Maybe" value={buckets.someday.length} tone="muted" />
       </div>
 
-      <QuickCapture categories={categories} contexts={contextOptions} />
+      <QuickCapture
+        categories={categories}
+        contexts={contextOptions}
+        projects={projects}
+      />
+
+      {stalledProjects.length > 0 && (
+        <Link
+          href="/projects"
+          className="flex items-center justify-between rounded-xl border border-warning bg-warning-bg px-4 py-3 text-sm shadow-sm hover:opacity-90"
+        >
+          <span className="text-warning">
+            <span aria-hidden>📁</span> {stalledProjects.length} project
+            {stalledProjects.length === 1 ? "" : "s"} with no next task —
+            {" "}
+            <span className="font-medium">
+              {stalledProjects.map((p) => p.name).join(", ")}
+            </span>{" "}
+            read as Someday/Maybe.
+          </span>
+          <span aria-hidden className="shrink-0 text-warning">
+            →
+          </span>
+        </Link>
+      )}
 
       <Section
         icon="📥"
@@ -105,7 +137,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -128,7 +160,7 @@ export default async function DashboardPage({
                 </h3>
                 <ul className="space-y-2">
                   {items.map((t) => (
-                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
                   ))}
                 </ul>
               </div>
@@ -148,7 +180,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -166,7 +198,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}

@@ -28,6 +28,16 @@ describes: capture → clarify → organize → reflect → engage.
   Data model below), so this page is the record of what you actually got
   done. Break it down by preset windows (last week/month/3 months/6
   months/year/all time) and by category and offense/defense.
+- **Projects** (`/projects`) — anything that takes more than one task to
+  finish. Classify a task into a project the same way you set its category
+  or offense/defense, and flag one of its tasks as the project's **next
+  task**. A project's status isn't stored — it's derived: a project with a
+  next task queued is **Active**, one with nothing queued reads as
+  **Someday/Maybe**. That status is surfaced right where you classify a
+  task: if you file a task under a project that has no next task yet, the
+  task list shows an inline notice with a one-click "Make this the next
+  task" action, and the dashboard shows a callout listing any stalled
+  projects.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -133,3 +143,13 @@ routed through this same path.
 The Horizons page reads/writes a separate `public.horizons` table:
 `level` (`10k` | `20k` | `30k` | `40k` | `50k`), `title`, `notes`, `status`
 (`Active` | `Someday` | `Archived`). See `lib/horizons.ts`.
+
+Projects live in `public.projects` (`name`, `notes`). `tasks.project_id`
+associates a task with one, and `tasks.is_next_action` (both added via
+migration) flags whether that task is the project's designated next
+action. A project's Active/Someday-Maybe status isn't a stored column —
+`deriveProjectStatus()` in `lib/gtd.ts` computes it from whether any of
+the project's open tasks has `is_next_action` set. `completed_tasks` also
+carries `project_id` (but not `is_next_action`, which only means something
+for open tasks) so a project's history survives its tasks being archived.
+See `lib/projects.ts` and `/projects`.

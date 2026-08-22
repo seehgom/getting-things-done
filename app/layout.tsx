@@ -56,6 +56,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     Horizons
                   </Link>
                   <Link
+                    href="/projects"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Projects
+                  </Link>
+                  <Link
                     href="/history"
                     className="text-muted hover:text-foreground"
                   >

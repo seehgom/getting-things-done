@@ -2,7 +2,9 @@ import FilterBar from "@/components/FilterBar";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
+import { getProjects } from "@/lib/projects";
 import {
+  buildProjectStatusMap,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   classify,
@@ -15,7 +17,12 @@ export default async function WeeklyReviewPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [allTasks, sp] = await Promise.all([getTasks(), searchParams]);
+  const [allTasks, projects, sp] = await Promise.all([
+    getTasks(),
+    getProjects(),
+    searchParams,
+  ]);
+  const projectStatusById = buildProjectStatusMap(projects, allTasks);
 
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
@@ -98,7 +105,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {overdue.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -115,7 +122,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {stale.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -132,7 +139,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -150,7 +157,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}
@@ -168,7 +175,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
             ))}
           </ul>
         )}

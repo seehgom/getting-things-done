@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import {
   deleteTask,
   setCategory,
+  setNextAction,
   setOffenseDefense,
   setStatus,
+  setTaskProject,
   touchTask,
   updateTaskAction,
 } from "@/app/actions";
@@ -15,6 +17,8 @@ import {
   LEVEL_OPTIONS,
   OFFENSE_DEFENSE_OPTIONS,
   STATUS_OPTIONS,
+  type Project,
+  type ProjectStatus,
   type Task,
 } from "@/lib/gtd";
 
@@ -31,16 +35,26 @@ export default function TaskItem({
   task,
   categories,
   contexts,
+  projects = [],
+  projectStatusById,
   defaultOpen = false,
 }: {
   task: Task;
   categories: string[];
   contexts: string[];
+  projects?: Project[];
+  projectStatusById?: Map<string, ProjectStatus>;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isPending, startTransition] = useTransition();
   const overdue = isOverdue(task) && task.status.toLowerCase() !== "done";
+  const project = task.project_id
+    ? projects.find((p) => p.id === task.project_id)
+    : undefined;
+  const projectStatus = task.project_id
+    ? projectStatusById?.get(task.project_id)
+    : undefined;
 
   function quickStatus(status: string) {
     startTransition(() => setStatus(task.id, status));
@@ -54,6 +68,14 @@ export default function TaskItem({
     startTransition(() =>
       setOffenseDefense(task.id, task.offense_defense === value ? null : value)
     );
+  }
+
+  function quickProject(projectId: string) {
+    startTransition(() => setTaskProject(task.id, projectId || null));
+  }
+
+  function quickMakeNextAction() {
+    startTransition(() => setNextAction(task.id, true));
   }
 
   function handleTouch() {
@@ -95,6 +117,16 @@ export default function TaskItem({
                 }`}
               >
                 {task.offense_defense}
+              </span>
+            )}
+            {project && (
+              <span className="rounded-full bg-card-border/40 px-2 py-0.5 text-[11px] text-muted">
+                📁 {project.name}
+              </span>
+            )}
+            {task.is_next_action && (
+              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent">
+                ★ Next for project
               </span>
             )}
             {task.importance && (
@@ -239,6 +271,44 @@ export default function TaskItem({
               {o}
             </button>
           ))}
+          {projects.length > 0 && (
+            <>
+              <span className="mx-1 text-card-border">|</span>
+              <span className="text-[11px] text-muted">Project:</span>
+              <select
+                value={task.project_id ?? ""}
+                onChange={(e) => quickProject(e.target.value)}
+                disabled={isPending}
+                className="rounded-full border border-card-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-accent"
+              >
+                <option value="">— None —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+      )}
+
+      {!open && project && projectStatus === "Someday/Maybe" && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-md bg-warning-bg px-2 py-1 text-[11px] text-warning">
+          <span>
+            &ldquo;{project.name}&rdquo; has no next task yet — it reads as
+            Someday/Maybe.
+          </span>
+          {!task.is_next_action && (
+            <button
+              type="button"
+              onClick={quickMakeNextAction}
+              disabled={isPending}
+              className="ml-auto shrink-0 rounded-full border border-warning px-2 py-0.5 font-medium hover:bg-warning/15"
+            >
+              Make this the next task
+            </button>
+          )}
         </div>
       )}
 
@@ -345,6 +415,32 @@ export default function TaskItem({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted">Project</span>
+            <select
+              name="project_id"
+              defaultValue={task.project_id ?? ""}
+              className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
+            >
+              <option value="">— None —</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 self-end pb-1.5">
+            <input
+              type="checkbox"
+              name="is_next_action"
+              defaultChecked={task.is_next_action}
+              className="h-3.5 w-3.5"
+            />
+            <span className="text-[11px] text-muted">
+              Next task for this project
+            </span>
           </label>
           <label className="col-span-2 flex flex-col gap-1 sm:col-span-4">
             <span className="text-[11px] text-muted">Notes</span>
