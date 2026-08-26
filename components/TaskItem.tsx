@@ -1,24 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition, type TransitionStartFunction } from "react";
 import {
+  createTask,
   deleteTask,
   setCategory,
+  setIsProject,
   setNextAction,
   setOffenseDefense,
   setStatus,
-  setTaskProject,
   touchTask,
   updateTaskAction,
 } from "@/app/actions";
 import {
   CATEGORY_SUGGESTIONS,
+  childrenOf,
   isOverdue,
   LEVEL_OPTIONS,
   OFFENSE_DEFENSE_OPTIONS,
   STATUS_OPTIONS,
-  type Project,
-  type ProjectStatus,
   type Task,
 } from "@/lib/gtd";
 
@@ -35,26 +35,28 @@ export default function TaskItem({
   task,
   categories,
   contexts,
-  projects = [],
-  projectStatusById,
+  allTasks = [],
   defaultOpen = false,
 }: {
   task: Task;
   categories: string[];
   contexts: string[];
-  projects?: Project[];
-  projectStatusById?: Map<string, ProjectStatus>;
+  allTasks?: Task[];
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isPending, startTransition] = useTransition();
   const overdue = isOverdue(task) && task.status.toLowerCase() !== "done";
-  const project = task.project_id
-    ? projects.find((p) => p.id === task.project_id)
+
+  const parentProject = task.parent_task_id
+    ? allTasks.find((t) => t.id === task.parent_task_id)
     : undefined;
-  const projectStatus = task.project_id
-    ? projectStatusById?.get(task.project_id)
-    : undefined;
+  const children = task.is_project ? childrenOf(task.id, allTasks) : [];
+  const nextChildren = children.filter((c) => c.is_next_action);
+  const futureChildren = children.filter((c) => !c.is_next_action);
+  const availableProjects = allTasks.filter(
+    (t) => t.is_project && t.id !== task.id
+  );
 
   function quickStatus(status: string) {
     startTransition(() => setStatus(task.id, status));
@@ -70,12 +72,8 @@ export default function TaskItem({
     );
   }
 
-  function quickProject(projectId: string) {
-    startTransition(() => setTaskProject(task.id, projectId || null));
-  }
-
-  function quickMakeNextAction() {
-    startTransition(() => setNextAction(task.id, true));
+  function quickToggleProject() {
+    startTransition(() => setIsProject(task.id, !task.is_project));
   }
 
   function handleTouch() {
@@ -83,7 +81,13 @@ export default function TaskItem({
   }
 
   function handleDelete() {
-    if (!confirm(`Delete "${task.task}"?`)) return;
+    const warning =
+      task.is_project && children.length > 0
+        ? `Delete "${task.task}" and its ${children.length} action${
+            children.length === 1 ? "" : "s"
+          }?`
+        : `Delete "${task.task}"?`;
+    if (!confirm(warning)) return;
     startTransition(() => deleteTask(task.id));
   }
 
@@ -119,9 +123,14 @@ export default function TaskItem({
                 {task.offense_defense}
               </span>
             )}
-            {project && (
+            {task.is_project && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent">
+                📁 Project
+              </span>
+            )}
+            {parentProject && (
               <span className="rounded-full bg-card-border/40 px-2 py-0.5 text-[11px] text-muted">
-                📁 {project.name}
+                part of: {parentProject.task}
               </span>
             )}
             {task.is_next_action && (
@@ -234,6 +243,19 @@ export default function TaskItem({
           >
             Still relevant
           </button>
+          <button
+            type="button"
+            onClick={quickToggleProject}
+            disabled={isPending}
+            className="rounded-md border border-card-border px-2 py-1 text-xs text-muted hover:bg-card-border/40"
+            title={
+              task.is_project
+                ? "Turn back into a plain task"
+                : "Turn this task into a project so other tasks can be added to it as actions"
+            }
+          >
+            {task.is_project ? "✕ Unmake project" : "📁 Make project"}
+          </button>
         </div>
       )}
 
@@ -271,44 +293,51 @@ export default function TaskItem({
               {o}
             </button>
           ))}
-          {projects.length > 0 && (
-            <>
-              <span className="mx-1 text-card-border">|</span>
-              <span className="text-[11px] text-muted">Project:</span>
-              <select
-                value={task.project_id ?? ""}
-                onChange={(e) => quickProject(e.target.value)}
-                disabled={isPending}
-                className="rounded-full border border-card-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-accent"
-              >
-                <option value="">— None —</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
         </div>
       )}
 
-      {!open && project && projectStatus === "Someday/Maybe" && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-md bg-warning-bg px-2 py-1 text-[11px] text-warning">
-          <span>
-            &ldquo;{project.name}&rdquo; has no next task yet — it reads as
-            Someday/Maybe.
-          </span>
-          {!task.is_next_action && (
-            <button
-              type="button"
-              onClick={quickMakeNextAction}
-              disabled={isPending}
-              className="ml-auto shrink-0 rounded-full border border-warning px-2 py-0.5 font-medium hover:bg-warning/15"
+      {!open && task.is_project && (
+        <div className="mt-2 space-y-1.5 border-t border-card-border pt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted">
+              Actions ({children.length})
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                nextChildren.length > 0
+                  ? "bg-accent/15 text-accent"
+                  : "bg-warning-bg text-warning"
+              }`}
             >
-              Make this the next task
-            </button>
+              {nextChildren.length > 0 ? "Active" : "Someday/Maybe"}
+            </span>
+          </div>
+
+          {nextChildren.length === 0 && children.length > 0 && (
+            <p className="rounded-md bg-warning-bg px-2 py-1 text-[11px] text-warning">
+              No next action set — mark one of the actions below as next to
+              make this project doable now.
+            </p>
           )}
+
+          {children.length > 0 && (
+            <ul className="space-y-1">
+              {[...nextChildren, ...futureChildren].map((c) => (
+                <ActionRow
+                  key={c.id}
+                  action={c}
+                  isPending={isPending}
+                  startTransition={startTransition}
+                />
+              ))}
+            </ul>
+          )}
+
+          <AddActionForm
+            projectId={task.id}
+            isPending={isPending}
+            startTransition={startTransition}
+          />
         </div>
       )}
 
@@ -416,17 +445,26 @@ export default function TaskItem({
               ))}
             </select>
           </label>
+          <label className="flex items-center gap-2 self-end pb-1.5">
+            <input
+              type="checkbox"
+              name="is_project"
+              defaultChecked={task.is_project}
+              className="h-3.5 w-3.5"
+            />
+            <span className="text-[11px] text-muted">This is a project</span>
+          </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[11px] text-muted">Project</span>
+            <span className="text-[11px] text-muted">Part of project</span>
             <select
-              name="project_id"
-              defaultValue={task.project_id ?? ""}
+              name="parent_task_id"
+              defaultValue={task.parent_task_id ?? ""}
               className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
             >
               <option value="">— None —</option>
-              {projects.map((p) => (
+              {availableProjects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}
+                  {p.task}
                 </option>
               ))}
             </select>
@@ -439,7 +477,7 @@ export default function TaskItem({
               className="h-3.5 w-3.5"
             />
             <span className="text-[11px] text-muted">
-              Next task for this project
+              Next action for its project
             </span>
           </label>
           <label className="col-span-2 flex flex-col gap-1 sm:col-span-4">
@@ -480,5 +518,96 @@ export default function TaskItem({
         </form>
       )}
     </li>
+  );
+}
+
+function ActionRow({
+  action,
+  isPending,
+  startTransition,
+}: {
+  action: Task;
+  isPending: boolean;
+  startTransition: TransitionStartFunction;
+}) {
+  function handleDeleteAction() {
+    if (!confirm(`Delete "${action.task}"?`)) return;
+    startTransition(() => deleteTask(action.id));
+  }
+
+  return (
+    <li className="flex items-center gap-1.5 rounded-md border border-card-border bg-background px-2 py-1 text-xs">
+      <button
+        type="button"
+        onClick={() => startTransition(() => setStatus(action.id, "Done"))}
+        disabled={isPending}
+        title="Mark this action done"
+        className="shrink-0 rounded-full border border-card-border px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground"
+      >
+        ✓
+      </button>
+      <span className="flex-1 truncate">{action.task}</span>
+      <button
+        type="button"
+        onClick={() =>
+          startTransition(() => setNextAction(action.id, !action.is_next_action))
+        }
+        disabled={isPending}
+        className={`shrink-0 rounded-full border px-2 py-0.5 transition-colors ${
+          action.is_next_action
+            ? "border-accent bg-accent text-accent-foreground"
+            : "border-card-border text-muted hover:bg-card-border/40"
+        }`}
+      >
+        {action.is_next_action ? "★ Next" : "Make next"}
+      </button>
+      <button
+        type="button"
+        onClick={handleDeleteAction}
+        disabled={isPending}
+        className="shrink-0 rounded-md px-1.5 py-0.5 text-danger hover:bg-danger-bg"
+      >
+        ✕
+      </button>
+    </li>
+  );
+}
+
+function AddActionForm({
+  projectId,
+  isPending,
+  startTransition,
+}: {
+  projectId: string;
+  isPending: boolean;
+  startTransition: TransitionStartFunction;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function handleAdd(formData: FormData) {
+    formData.set("parent_task_id", projectId);
+    startTransition(async () => {
+      await createTask(formData);
+      formRef.current?.reset();
+    });
+  }
+
+  return (
+    <form ref={formRef} action={handleAdd} className="flex gap-1.5">
+      <input
+        name="task"
+        required
+        placeholder="Add an action…"
+        autoComplete="off"
+        className="flex-1 rounded-md border border-card-border bg-background px-2 py-1 text-xs outline-none focus:border-accent"
+      />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="shrink-0 rounded-md border border-card-border px-2 py-1 text-xs hover:bg-card-border/40"
+      >
+        Add
+      </button>
+    </form>
   );
 }

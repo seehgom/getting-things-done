@@ -1,20 +1,26 @@
 import Link from "next/link";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
-import NewProjectForm from "@/components/NewProjectForm";
 import { getTasks } from "@/lib/tasks";
-import { getProjects } from "@/lib/projects";
 import {
-  buildProjectStatusMap,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
-  classify,
+  effectiveBucket,
 } from "@/lib/gtd";
 
 export default async function ProjectsPage() {
-  const [projects, allTasks] = await Promise.all([getProjects(), getTasks()]);
+  const allTasks = await getTasks();
 
-  const projectStatusById = buildProjectStatusMap(projects, allTasks);
+  const projectTasks = allTasks.filter((t) => t.is_project);
+  const active = projectTasks.filter(
+    (p) => effectiveBucket(p, allTasks) === "next"
+  );
+  const stalled = projectTasks.filter(
+    (p) => effectiveBucket(p, allTasks) === "someday"
+  );
+  const other = projectTasks.filter(
+    (p) => !active.includes(p) && !stalled.includes(p)
+  );
 
   const categoriesInUse = Array.from(
     new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
@@ -38,75 +44,90 @@ export default async function ProjectsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Any outcome that takes more than one task belongs here. A project
-          with a next task queued up is <span className="font-medium">Active</span>;
-          one with nothing queued reads as{" "}
-          <span className="font-medium">Someday/Maybe</span> until you assign
-          it one.
+          A project is just a task promoted to hold other tasks as its
+          actions — use the &ldquo;📁 Make project&rdquo; button on any task.
+          A project with an action flagged as next is{" "}
+          <span className="font-medium">Active</span>; one with nothing
+          flagged reads as{" "}
+          <span className="font-medium">Someday/Maybe</span> until you mark
+          one of its actions next.
         </p>
       </div>
 
-      <NewProjectForm />
-
-      {projects.length === 0 ? (
+      {projectTasks.length === 0 ? (
         <p className="rounded-lg border border-dashed border-card-border px-3 py-4 text-center text-xs text-muted">
-          No projects yet — create one above, then classify tasks into it
-          from the task list.
+          No projects yet. Open any task in your list and click
+          &ldquo;📁 Make project&rdquo;, then add its actions.
         </p>
       ) : (
-        <div className="space-y-4">
-          {projects.map((p) => {
-            const status = projectStatusById.get(p.id) ?? "Someday/Maybe";
-            const projectTasks = allTasks.filter(
-              (t) => t.project_id === p.id && classify(t) !== "done"
-            );
-            return (
-              <Section
-                key={p.id}
-                icon="📁"
-                title={p.name}
-                description={p.notes ?? undefined}
-                count={projectTasks.length}
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      status === "Active"
-                        ? "bg-accent/15 text-accent"
-                        : "bg-warning-bg text-warning"
-                    }`}
-                  >
-                    {status}
-                  </span>
-                  {status === "Someday/Maybe" && (
-                    <span className="text-[11px] text-muted">
-                      No next task queued — mark one below.
-                    </span>
-                  )}
-                </div>
-                {projectTasks.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-card-border px-3 py-4 text-center text-xs text-muted">
-                    No tasks in this project yet. Classify a task into it
-                    from the dashboard or Quick Capture.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {projectTasks.map((t) => (
-                      <TaskItem
-                        key={t.id}
-                        task={t}
-                        categories={categories}
-                        contexts={contextOptions}
-                        projects={projects}
-                        projectStatusById={projectStatusById}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </Section>
-            );
-          })}
-        </div>
+        <>
+          <Section
+            icon="⚡"
+            title="Active projects"
+            description="At least one action is flagged as next — these are doable right now."
+            count={active.length}
+          >
+            {active.length === 0 ? (
+              <Empty text="No projects have a next action queued yet." />
+            ) : (
+              <ul className="space-y-2">
+                {active.map((p) => (
+                  <TaskItem
+                    key={p.id}
+                    task={p}
+                    categories={categories}
+                    contexts={contextOptions}
+                    allTasks={allTasks}
+                  />
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          <Section
+            icon="🌒"
+            title="Someday / Maybe projects"
+            description="No action is flagged as next yet, so these aren't actionable right now — mark one below to activate."
+            count={stalled.length}
+          >
+            {stalled.length === 0 ? (
+              <Empty text="Nothing stalled — every project has a next action." />
+            ) : (
+              <ul className="space-y-2">
+                {stalled.map((p) => (
+                  <TaskItem
+                    key={p.id}
+                    task={p}
+                    categories={categories}
+                    contexts={contextOptions}
+                    allTasks={allTasks}
+                  />
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {other.length > 0 && (
+            <Section
+              icon="✅"
+              title="Done / Waiting projects"
+              count={other.length}
+              defaultOpen={false}
+            >
+              <ul className="space-y-2">
+                {other.map((p) => (
+                  <TaskItem
+                    key={p.id}
+                    task={p}
+                    categories={categories}
+                    contexts={contextOptions}
+                    allTasks={allTasks}
+                  />
+                ))}
+              </ul>
+            </Section>
+          )}
+        </>
       )}
 
       <Link
@@ -114,14 +135,23 @@ export default async function ProjectsPage() {
         className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 text-sm shadow-sm hover:border-accent"
       >
         <span>
-          <span aria-hidden>⚡</span> Classify a task into a project from{" "}
-          <span className="font-medium">Dashboard</span> or the Weekly
-          Review — it shows up here automatically.
+          <span aria-hidden>⚡</span> Projects also show up in{" "}
+          <span className="font-medium">Dashboard</span> and{" "}
+          <span className="font-medium">Weekly Review</span> like any other
+          task — this page is just a focused view of them.
         </span>
         <span aria-hidden className="text-muted">
           →
         </span>
       </Link>
     </div>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <p className="rounded-lg border border-dashed border-card-border px-3 py-4 text-center text-xs text-muted">
+      {text}
+    </p>
   );
 }

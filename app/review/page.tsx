@@ -2,12 +2,10 @@ import FilterBar from "@/components/FilterBar";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
-import { getProjects } from "@/lib/projects";
 import {
-  buildProjectStatusMap,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
-  classify,
+  effectiveBucket,
   isOverdue,
   isStale,
 } from "@/lib/gtd";
@@ -17,12 +15,7 @@ export default async function WeeklyReviewPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [allTasks, projects, sp] = await Promise.all([
-    getTasks(),
-    getProjects(),
-    searchParams,
-  ]);
-  const projectStatusById = buildProjectStatusMap(projects, allTasks);
+  const [allTasks, sp] = await Promise.all([getTasks(), searchParams]);
 
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
@@ -50,12 +43,12 @@ export default async function WeeklyReviewPage({
       (!selectedContext || t.context === selectedContext)
   );
 
-  const notDone = tasks.filter((t) => classify(t) !== "done");
+  const notDone = tasks.filter((t) => effectiveBucket(t, allTasks) !== "done");
   const overdue = notDone.filter(isOverdue);
   const stale = notDone.filter((t) => isStale(t) && !isOverdue(t));
-  const waiting = tasks.filter((t) => classify(t) === "waiting");
-  const someday = tasks.filter((t) => classify(t) === "someday");
-  const inbox = tasks.filter((t) => classify(t) === "inbox");
+  const waiting = tasks.filter((t) => effectiveBucket(t, allTasks) === "waiting");
+  const someday = tasks.filter((t) => effectiveBucket(t, allTasks) === "someday");
+  const inbox = tasks.filter((t) => effectiveBucket(t, allTasks) === "inbox");
 
   const allClear =
     overdue.length === 0 &&
@@ -105,7 +98,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {overdue.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -122,7 +115,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {stale.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -139,7 +132,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -157,7 +150,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -175,7 +168,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}

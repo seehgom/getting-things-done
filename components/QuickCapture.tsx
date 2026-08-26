@@ -2,16 +2,14 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createTask } from "@/app/actions";
-import { OFFENSE_DEFENSE_OPTIONS, type Project } from "@/lib/gtd";
+import { OFFENSE_DEFENSE_OPTIONS } from "@/lib/gtd";
 
 export default function QuickCapture({
   categories,
   contexts,
-  projects = [],
 }: {
   categories: string[];
   contexts: string[];
-  projects?: Project[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [showDetails, setShowDetails] = useState(false);
@@ -100,26 +98,10 @@ export default function QuickCapture({
             placeholder="Notes"
             className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
-          {projects.length > 0 && (
-            <>
-              <select
-                name="project_id"
-                defaultValue=""
-                className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm text-muted outline-none focus:border-accent"
-              >
-                <option value="">Project (none)</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <label className="flex items-center gap-2 px-1 text-xs text-muted">
-                <input type="checkbox" name="is_next_action" className="h-3.5 w-3.5" />
-                Next task for that project
-              </label>
-            </>
-          )}
+          <label className="flex items-center gap-2 px-1 text-xs text-muted">
+            <input type="checkbox" name="is_project" className="h-3.5 w-3.5" />
+            This is a project (add its actions afterward)
+          </label>
         </div>
       )}
 

@@ -5,12 +5,10 @@ import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
 import { getTasks } from "@/lib/tasks";
-import { getProjects } from "@/lib/projects";
 import {
-  buildProjectStatusMap,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
-  classify,
+  effectiveBucket,
   groupByCategory,
   sortNextActions,
 } from "@/lib/gtd";
@@ -20,16 +18,14 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [user, allTasks, projects, sp] = await Promise.all([
+  const [user, allTasks, sp] = await Promise.all([
     currentUser(),
     getTasks(),
-    getProjects(),
     searchParams,
   ]);
 
-  const projectStatusById = buildProjectStatusMap(projects, allTasks);
-  const stalledProjects = projects.filter(
-    (p) => projectStatusById.get(p.id) === "Someday/Maybe"
+  const stalledProjects = allTasks.filter(
+    (t) => t.is_project && effectiveBucket(t, allTasks) === "someday"
   );
 
   const selectedCategory = sp.category?.trim() || undefined;
@@ -62,7 +58,7 @@ export default async function DashboardPage({
     string,
     typeof tasks
   >;
-  for (const t of tasks) buckets[classify(t)].push(t);
+  for (const t of tasks) buckets[effectiveBucket(t, allTasks)].push(t);
 
   const nextByCategory = groupByCategory(sortNextActions(buckets.next));
 
@@ -100,11 +96,7 @@ export default async function DashboardPage({
         <StatCard label="Someday / Maybe" value={buckets.someday.length} tone="muted" />
       </div>
 
-      <QuickCapture
-        categories={categories}
-        contexts={contextOptions}
-        projects={projects}
-      />
+      <QuickCapture categories={categories} contexts={contextOptions} />
 
       {stalledProjects.length > 0 && (
         <Link
@@ -113,10 +105,10 @@ export default async function DashboardPage({
         >
           <span className="text-warning">
             <span aria-hidden>📁</span> {stalledProjects.length} project
-            {stalledProjects.length === 1 ? "" : "s"} with no next task —
+            {stalledProjects.length === 1 ? "" : "s"} with no next action —
             {" "}
             <span className="font-medium">
-              {stalledProjects.map((p) => p.name).join(", ")}
+              {stalledProjects.map((p) => p.task).join(", ")}
             </span>{" "}
             read as Someday/Maybe.
           </span>
@@ -137,7 +129,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -160,7 +152,7 @@ export default async function DashboardPage({
                 </h3>
                 <ul className="space-y-2">
                   {items.map((t) => (
-                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
                   ))}
                 </ul>
               </div>
@@ -180,7 +172,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}
@@ -198,7 +190,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} projects={projects} projectStatusById={projectStatusById} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
             ))}
           </ul>
         )}

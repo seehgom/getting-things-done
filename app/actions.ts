@@ -29,7 +29,9 @@ export async function createTask(formData: FormData) {
   const context = String(formData.get("context") ?? "").trim() || null;
   const offense_defense =
     String(formData.get("offense_defense") ?? "").trim() || null;
-  const project_id = String(formData.get("project_id") ?? "").trim() || null;
+  const parent_task_id =
+    String(formData.get("parent_task_id") ?? "").trim() || null;
+  const is_project = formData.get("is_project") === "on";
   const is_next_action = formData.get("is_next_action") === "on";
 
   const supabase = supabaseServer();
@@ -40,7 +42,8 @@ export async function createTask(formData: FormData) {
     due_date,
     context,
     offense_defense,
-    project_id,
+    parent_task_id,
+    is_project,
     is_next_action,
     status: "Open",
   });
@@ -58,7 +61,8 @@ export type TaskUpdate = {
   due_date?: string | null;
   context?: string | null;
   offense_defense?: string | null;
-  project_id?: string | null;
+  parent_task_id?: string | null;
+  is_project?: boolean;
   is_next_action?: boolean;
   status?: string;
 };
@@ -94,7 +98,8 @@ export async function updateTaskAction(formData: FormData) {
     due_date: String(formData.get("due_date") ?? "").trim() || null,
     context: String(formData.get("context") ?? "").trim() || null,
     offense_defense: String(formData.get("offense_defense") ?? "").trim() || null,
-    project_id: String(formData.get("project_id") ?? "").trim() || null,
+    parent_task_id: String(formData.get("parent_task_id") ?? "").trim() || null,
+    is_project: formData.get("is_project") === "on",
     is_next_action: formData.get("is_next_action") === "on",
     status: String(formData.get("status") ?? "Open").trim() || "Open",
   };
@@ -113,29 +118,17 @@ export async function setOffenseDefense(id: string, value: string | null) {
   await updateTask(id, { offense_defense: value });
 }
 
-export async function setTaskProject(id: string, projectId: string | null) {
-  await updateTask(id, { project_id: projectId });
+/** Promotes a task to a project (or demotes it back) — a project is just
+ * a task other tasks can point at via `parent_task_id`. */
+export async function setIsProject(id: string, isProject: boolean) {
+  await updateTask(id, { is_project: isProject });
 }
 
-/** Flags (or unflags) a task as its project's next action — this is what
- * deriveProjectStatus() reads to decide whether the project is Active or
- * reads as Someday/Maybe. */
+/** Flags (or unflags) an action as its project's next action — this is
+ * what projectBucket() reads to decide whether the project is doable now
+ * or reads as Someday/Maybe. */
 export async function setNextAction(id: string, isNext: boolean) {
   await updateTask(id, { is_next_action: isNext });
-}
-
-export async function createProject(formData: FormData) {
-  await requireUser();
-
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) throw new Error("Project name is required");
-  const notes = String(formData.get("notes") ?? "").trim() || null;
-
-  const supabase = supabaseServer();
-  const { error } = await supabase.from("projects").insert({ name, notes });
-  if (error) throw new Error(error.message);
-
-  revalidateAll();
 }
 
 /** Moves a task out of `tasks` into the `completed_tasks` archive — the
@@ -154,20 +147,13 @@ export async function completeTask(id: string, overrides: TaskUpdate = {}) {
   if (!row) throw new Error("Task not found");
 
   const now = new Date().toISOString();
-  // `is_next_action` only makes sense for open tasks — completed_tasks has
-  // no such column, so it's dropped rather than carried into the archive.
-  const archived: Record<string, unknown> = {
+  const { error: insertError } = await supabase.from("completed_tasks").insert({
     ...row,
     ...overrides,
     status: "Done",
     updated_at: now,
     completed_at: now,
-  };
-  delete archived.is_next_action;
-
-  const { error: insertError } = await supabase
-    .from("completed_tasks")
-    .insert(archived);
+  });
   if (insertError) throw new Error(insertError.message);
 
   const { error: deleteError } = await supabase

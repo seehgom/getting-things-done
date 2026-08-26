@@ -29,15 +29,22 @@ describes: capture → clarify → organize → reflect → engage.
   done. Break it down by preset windows (last week/month/3 months/6
   months/year/all time) and by category and offense/defense.
 - **Projects** (`/projects`) — anything that takes more than one task to
-  finish. Classify a task into a project the same way you set its category
-  or offense/defense, and flag one of its tasks as the project's **next
-  task**. A project's status isn't stored — it's derived: a project with a
-  next task queued is **Active**, one with nothing queued reads as
-  **Someday/Maybe**. That status is surfaced right where you classify a
-  task: if you file a task under a project that has no next task yet, the
-  task list shows an inline notice with a one-click "Make this the next
-  task" action, and the dashboard shows a callout listing any stalled
-  projects.
+  finish. There's no separate projects entity: any task can be promoted
+  into one with the "📁 Make project" button, and any other task can then
+  be added under it as an action. A promoted task keeps every regular task
+  feature (classify, edit, due date, delete, …) and gains one more piece —
+  its list of actions, split into whichever one is flagged **next** (the
+  single thing that's doable right now) and the rest, which are future
+  work. A project's own bucket isn't taken from its own fields — it's
+  derived from its actions: a project with a next action flagged is
+  **Active** and shows up in Next Actions on the dashboard, one with none
+  flagged reads as **Someday/Maybe**. That distinction is surfaced right
+  where you'd act on it — the project's card in the task list shows an
+  inline notice and a one-click "Make next" button per action — and the
+  dashboard shows a callout listing any stalled projects. `/projects` is
+  just a focused view of the same tasks (grouped Active / Someday-Maybe);
+  projects and their actions still show up in Dashboard and Weekly Review
+  like any other task.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -144,12 +151,17 @@ The Horizons page reads/writes a separate `public.horizons` table:
 `level` (`10k` | `20k` | `30k` | `40k` | `50k`), `title`, `notes`, `status`
 (`Active` | `Someday` | `Archived`). See `lib/horizons.ts`.
 
-Projects live in `public.projects` (`name`, `notes`). `tasks.project_id`
-associates a task with one, and `tasks.is_next_action` (both added via
-migration) flags whether that task is the project's designated next
-action. A project's Active/Someday-Maybe status isn't a stored column —
-`deriveProjectStatus()` in `lib/gtd.ts` computes it from whether any of
-the project's open tasks has `is_next_action` set. `completed_tasks` also
-carries `project_id` (but not `is_next_action`, which only means something
-for open tasks) so a project's history survives its tasks being archived.
-See `lib/projects.ts` and `/projects`.
+Projects aren't a separate table — `tasks.is_project` (boolean) marks a
+task as a project, and `tasks.parent_task_id` (self-referencing, added via
+migration) points an action at the project task it belongs to.
+`tasks.is_next_action` flags whether an action is the one thing ready to
+do now. A project's Active/Someday-Maybe status isn't a stored column —
+`projectBucket()` in `lib/gtd.ts` derives it from whether any of the
+project's actions has `is_next_action` set; `effectiveBucket()` is what
+the dashboard, Weekly Review, and `/projects` actually bucket tasks by
+(projects via `projectBucket()`, everything else via `classify()`).
+Deleting a project cascades to delete its (still-open) actions;
+`completed_tasks` mirrors `is_project`/`parent_task_id`/`is_next_action`
+so a project's history survives its actions being archived, with
+`parent_task_id` there set null instead of cascading if the project
+itself is later deleted.
