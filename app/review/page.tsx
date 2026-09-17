@@ -1,11 +1,12 @@
 import FilterBar from "@/components/FilterBar";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
-import { getTasks } from "@/lib/tasks";
+import { getCompletedTasks, getTasks } from "@/lib/tasks";
 import {
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   effectiveBucket,
+  groupCompletedByParent,
   isOverdue,
   isStale,
 } from "@/lib/gtd";
@@ -15,7 +16,12 @@ export default async function WeeklyReviewPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [allTasks, sp] = await Promise.all([getTasks(), searchParams]);
+  const [allTasks, completedTasks, sp] = await Promise.all([
+    getTasks(),
+    getCompletedTasks(),
+    searchParams,
+  ]);
+  const completedByParent = groupCompletedByParent(completedTasks);
 
   const selectedCategory = sp.category?.trim() || undefined;
   const selectedContext = sp.context?.trim() || undefined;
@@ -40,7 +46,10 @@ export default async function WeeklyReviewPage({
   const tasks = allTasks.filter(
     (t) =>
       (!selectedCategory || t.category === selectedCategory) &&
-      (!selectedContext || t.context === selectedContext)
+      (!selectedContext || t.context === selectedContext) &&
+      // Actions show up nested under their project's card on the
+      // dashboard/projects pages, not standalone here.
+      !t.parent_task_id
   );
 
   const notDone = tasks.filter((t) => effectiveBucket(t, allTasks) !== "done");
@@ -98,7 +107,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {overdue.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -115,7 +124,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {stale.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -132,7 +141,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -150,7 +159,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -168,7 +177,7 @@ export default async function WeeklyReviewPage({
         ) : (
           <ul className="space-y-2">
             {inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}

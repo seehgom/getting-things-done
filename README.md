@@ -33,18 +33,29 @@ describes: capture → clarify → organize → reflect → engage.
   into one with the "📁 Make project" button, and any other task can then
   be added under it as an action. A promoted task keeps every regular task
   feature (classify, edit, due date, delete, …) and gains one more piece —
-  its list of actions, split into whichever one is flagged **next** (the
-  single thing that's doable right now) and the rest, which are future
-  work. A project's own bucket isn't taken from its own fields — it's
-  derived from its actions: a project with a next action flagged is
-  **Active** and shows up in Next Actions on the dashboard, one with none
-  flagged reads as **Someday/Maybe**. That distinction is surfaced right
-  where you'd act on it — the project's card in the task list shows an
-  inline notice and a one-click "Make next" button per action — and the
-  dashboard shows a callout listing any stalled projects. `/projects` is
-  just a focused view of the same tasks (grouped Active / Someday-Maybe);
-  projects and their actions still show up in Dashboard and Weekly Review
-  like any other task.
+  its list of actions. Actions inherit their project's category
+  automatically (a Work project's actions are Work too — reparenting or
+  changing a project's category cascades to its actions so the hierarchy
+  never drifts out of sync), and can be dragged to reorder them by
+  priority. One action at a time is flagged **next** (the single thing
+  that's doable right now — flagging one unflags any previous next action
+  in that project); finishing it automatically promotes whichever action
+  is first in that order to take its place, so a project never stalls
+  waiting for someone to notice. A project's own bucket isn't taken from
+  its own fields — it's derived from its actions: a project with a next
+  action flagged is **Active** and shows up in Next Actions on the
+  dashboard, one with none flagged reads as **Someday/Maybe**. Completed
+  actions don't just disappear — a "Completed" sub-list on the project
+  shows them struck through. `/projects` is a focused view grouped by
+  Active / Someday-Maybe; projects (and their actions, nested inside the
+  project's own card rather than listed separately) still show up on
+  Dashboard and Weekly Review like any other task.
+- **Voice Notes** (`/voice-notes`) — an index of what Claude's voice chat
+  has produced on your behalf when it can't just say the answer out loud:
+  a generated doc/PDF uploaded to Drive, a product search's results, a
+  link it found. Voice chat writes these directly into the `voice_notes`
+  table (see Data model below); this page is where you browse, filter by
+  category, mark one reviewed, or add an entry by hand.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -155,13 +166,62 @@ Projects aren't a separate table — `tasks.is_project` (boolean) marks a
 task as a project, and `tasks.parent_task_id` (self-referencing, added via
 migration) points an action at the project task it belongs to.
 `tasks.is_next_action` flags whether an action is the one thing ready to
-do now. A project's Active/Someday-Maybe status isn't a stored column —
+do now — `setNextAction()` (`app/actions.ts`) unflags any other action
+under the same project first, so only one is ever "the" next action.
+`tasks.sort_order` (nullable integer) is the manual drag-and-drop order
+among a project's actions; `reorderActions()` persists it and
+`childrenOf()` (`lib/gtd.ts`) sorts by it (falling back to `created_at`
+for rows never reordered). Completing an action that was flagged next
+(`completeTask()`) automatically flags whichever sibling is first in that
+order, so a project's "next" never goes empty on its own. Creating or
+reparenting a task under a project (`createTask()`/`updateTask()`) always
+overwrites its `category` with the project's, and a project's own
+category change cascades to all of its actions — the whole hierarchy
+stays one category.
+
+A project's Active/Someday-Maybe status isn't a stored column —
 `projectBucket()` in `lib/gtd.ts` derives it from whether any of the
 project's actions has `is_next_action` set; `effectiveBucket()` is what
 the dashboard, Weekly Review, and `/projects` actually bucket tasks by
 (projects via `projectBucket()`, everything else via `classify()`).
+Dashboard and Weekly Review only show top-level tasks and projects in
+their Inbox/Next/Waiting/Someday lists — an action (anything with
+`parent_task_id` set) shows up nested inside its project's own card
+instead of a second time in the flat lists.
+
 Deleting a project cascades to delete its (still-open) actions;
-`completed_tasks` mirrors `is_project`/`parent_task_id`/`is_next_action`
-so a project's history survives its actions being archived, with
-`parent_task_id` there set null instead of cascading if the project
+`completed_tasks` mirrors `is_project`/`parent_task_id`/`is_next_action`/
+`sort_order` so a project's history survives its actions being archived,
+with `parent_task_id` there set null instead of cascading if the project
 itself is later deleted.
+
+Voice Notes reads/writes `public.voice_notes` — `description`,
+`artifact_type` (doc/pdf/sheet/slides/link/image), `drive_link`,
+`category`, `project` (free text), `status` (`Open`/`Done`), `notes`.
+This table and its RLS policy already existed (populated by Claude's
+voice chat) before this app added a UI for it — see Security below.
+
+## Security
+
+Every table this app touches (`tasks`, `completed_tasks`, `horizons`,
+`voice_notes`) has Postgres row-level security enabled with a policy
+restricted to Supabase's `authenticated` role — not `anon`, not `public`.
+This app itself never uses Supabase's anon/publishable key anywhere; it
+only uses the service-role key (`SUPABASE_SERVICE_ROLE_KEY`), read
+exclusively in `lib/supabase/server.ts` and never sent to the browser —
+all reads/writes happen in Server Components and Server Actions. Every
+route except `/sign-in` and `/sign-up`, including `/voice-notes`, is
+gated by Clerk through `proxy.ts`'s catch-all matcher, so a signed-out or
+disallowed visitor can't reach any of this data through the app.
+
+Net effect: nobody can read or write these tables through Supabase's
+public REST API with just the anon key, because RLS requires the
+`authenticated` role and this app never issues a Supabase Auth session
+(Clerk is the only auth layer) — so that role is unreachable from a
+browser here. The one thing outside this repo's visibility is however
+Claude's voice chat itself writes into `voice_notes` — that's a
+credential configured on the Claude/Anthropic side (most likely also a
+service-role key, via whatever connector performs the insert), not
+anything stored in this codebase. Worth confirming there that it's kept
+server-side and rotating the Supabase service-role key from the Supabase
+dashboard if it's ever suspected to have leaked.

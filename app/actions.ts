@@ -23,7 +23,7 @@ export async function createTask(formData: FormData) {
   const task = String(formData.get("task") ?? "").trim();
   if (!task) throw new Error("Task text is required");
 
-  const category = String(formData.get("category") ?? "").trim() || "Inbox";
+  let category = String(formData.get("category") ?? "").trim() || "Inbox";
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const due_date = String(formData.get("due_date") ?? "").trim() || null;
   const context = String(formData.get("context") ?? "").trim() || null;
@@ -35,6 +35,18 @@ export async function createTask(formData: FormData) {
   const is_next_action = formData.get("is_next_action") === "on";
 
   const supabase = supabaseServer();
+
+  // An action always shares its project's category — keeps the whole
+  // hierarchy consistent (a Work project's actions are Work too).
+  if (parent_task_id) {
+    const { data: parent } = await supabase
+      .from("tasks")
+      .select("category")
+      .eq("id", parent_task_id)
+      .single();
+    if (parent) category = parent.category;
+  }
+
   const { error } = await supabase.from("tasks").insert({
     task,
     category,
@@ -78,11 +90,33 @@ export async function updateTask(id: string, fields: TaskUpdate) {
   }
 
   const supabase = supabaseServer();
+  const finalFields = { ...fields };
+
+  // Being (re)assigned to a project always adopts that project's category,
+  // so the parent wins over whatever category the form happened to submit.
+  if (finalFields.parent_task_id) {
+    const { data: parent } = await supabase
+      .from("tasks")
+      .select("category")
+      .eq("id", finalFields.parent_task_id)
+      .single();
+    if (parent) finalFields.category = parent.category;
+  }
+
   const { error } = await supabase
     .from("tasks")
-    .update({ ...fields, updated_at: new Date().toISOString() })
+    .update({ ...finalFields, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
+
+  // A project's own category change cascades to its actions, so the
+  // hierarchy never drifts out of sync.
+  if (finalFields.category) {
+    await supabase
+      .from("tasks")
+      .update({ category: finalFields.category, updated_at: new Date().toISOString() })
+      .eq("parent_task_id", id);
+  }
 
   revalidateAll();
 }
@@ -126,9 +160,44 @@ export async function setIsProject(id: string, isProject: boolean) {
 
 /** Flags (or unflags) an action as its project's next action — this is
  * what projectBucket() reads to decide whether the project is doable now
- * or reads as Someday/Maybe. */
+ * or reads as Someday/Maybe. Only one action per project is "the" next
+ * action at a time, so flagging one unflags any current sibling. */
 export async function setNextAction(id: string, isNext: boolean) {
+  await requireUser();
+
+  if (isNext) {
+    const supabase = supabaseServer();
+    const { data: row } = await supabase
+      .from("tasks")
+      .select("parent_task_id")
+      .eq("id", id)
+      .single();
+    if (row?.parent_task_id) {
+      await supabase
+        .from("tasks")
+        .update({ is_next_action: false })
+        .eq("parent_task_id", row.parent_task_id)
+        .neq("id", id);
+    }
+  }
+
   await updateTask(id, { is_next_action: isNext });
+}
+
+/** Persists a drag-and-drop reorder of a project's actions. */
+export async function reorderActions(orderedIds: string[]) {
+  await requireUser();
+
+  const supabase = supabaseServer();
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from("tasks").update({ sort_order: index }).eq("id", id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(failed.error.message);
+
+  revalidateAll();
 }
 
 /** Moves a task out of `tasks` into the `completed_tasks` archive — the
@@ -161,6 +230,25 @@ export async function completeTask(id: string, overrides: TaskUpdate = {}) {
     .delete()
     .eq("id", id);
   if (deleteError) throw new Error(deleteError.message);
+
+  // Completing a project's flagged next action hands the baton to
+  // whichever sibling is first in sort order, so the project never stalls
+  // waiting for someone to notice and flag the next one manually.
+  if (row.parent_task_id && row.is_next_action) {
+    const { data: siblings } = await supabase
+      .from("tasks")
+      .select("id")
+      .eq("parent_task_id", row.parent_task_id)
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (siblings && siblings.length > 0) {
+      await supabase
+        .from("tasks")
+        .update({ is_next_action: true })
+        .eq("id", siblings[0].id);
+    }
+  }
 
   revalidateAll();
 }

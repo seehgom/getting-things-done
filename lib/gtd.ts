@@ -20,6 +20,10 @@ export type Task = {
    * do right now? A project with no such action reads as Someday/Maybe —
    * see projectBucket(). */
   is_next_action: boolean;
+  /** Manual drag-and-drop order among siblings under the same
+   * `parent_task_id`. Null for rows never reordered — falls back to
+   * created_at. */
+  sort_order: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -90,6 +94,20 @@ function levelWeight(v: string | null): number {
   return LEVEL_WEIGHT[v.toLowerCase()] ?? 0;
 }
 
+/** Groups completed actions by their project's task id, so a project's
+ * TaskItem card can show what's already been finished under it. */
+export function groupCompletedByParent(
+  completed: CompletedTask[]
+): Map<string, CompletedTask[]> {
+  const map = new Map<string, CompletedTask[]>();
+  for (const t of completed) {
+    if (!t.parent_task_id) continue;
+    if (!map.has(t.parent_task_id)) map.set(t.parent_task_id, []);
+    map.get(t.parent_task_id)!.push(t);
+  }
+  return map;
+}
+
 export function isOverdue(t: Task): boolean {
   if (!t.due_date) return false;
   const today = new Date().toISOString().slice(0, 10);
@@ -114,7 +132,14 @@ export function sortNextActions(tasks: Task[]): Task[] {
 }
 
 export function childrenOf(taskId: string, tasks: Task[]): Task[] {
-  return tasks.filter((t) => t.parent_task_id === taskId);
+  return tasks
+    .filter((t) => t.parent_task_id === taskId)
+    .sort((a, b) => {
+      const ao = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return a.created_at.localeCompare(b.created_at);
+    });
 }
 
 /**

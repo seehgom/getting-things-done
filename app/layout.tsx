@@ -67,6 +67,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   >
                     History
                   </Link>
+                  <Link
+                    href="/voice-notes"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Voice Notes
+                  </Link>
                   <UserButton />
                 </Show>
                 <Show when="signed-out">

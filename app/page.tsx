@@ -4,12 +4,13 @@ import FilterBar from "@/components/FilterBar";
 import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
-import { getTasks } from "@/lib/tasks";
+import { getCompletedTasks, getTasks } from "@/lib/tasks";
 import {
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   effectiveBucket,
   groupByCategory,
+  groupCompletedByParent,
   sortNextActions,
 } from "@/lib/gtd";
 
@@ -18,12 +19,14 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ category?: string; context?: string }>;
 }) {
-  const [user, allTasks, sp] = await Promise.all([
+  const [user, allTasks, completedTasks, sp] = await Promise.all([
     currentUser(),
     getTasks(),
+    getCompletedTasks(),
     searchParams,
   ]);
 
+  const completedByParent = groupCompletedByParent(completedTasks);
   const stalledProjects = allTasks.filter(
     (t) => t.is_project && effectiveBucket(t, allTasks) === "someday"
   );
@@ -58,7 +61,12 @@ export default async function DashboardPage({
     string,
     typeof tasks
   >;
-  for (const t of tasks) buckets[effectiveBucket(t, allTasks)].push(t);
+  for (const t of tasks) {
+    // Actions show up nested under their project's card, not standalone,
+    // so the flat lists below stay to top-level tasks and projects only.
+    if (t.parent_task_id) continue;
+    buckets[effectiveBucket(t, allTasks)].push(t);
+  }
 
   const nextByCategory = groupByCategory(sortNextActions(buckets.next));
 
@@ -129,7 +137,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -152,7 +160,7 @@ export default async function DashboardPage({
                 </h3>
                 <ul className="space-y-2">
                   {items.map((t) => (
-                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
                   ))}
                 </ul>
               </div>
@@ -172,7 +180,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}
@@ -190,7 +198,7 @@ export default async function DashboardPage({
         ) : (
           <ul className="space-y-2">
             {buckets.someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} />
+              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
             ))}
           </ul>
         )}

@@ -1,15 +1,20 @@
 import Link from "next/link";
 import Section from "@/components/Section";
 import TaskItem from "@/components/TaskItem";
-import { getTasks } from "@/lib/tasks";
+import { getCompletedTasks, getTasks } from "@/lib/tasks";
 import {
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   effectiveBucket,
+  groupCompletedByParent,
 } from "@/lib/gtd";
 
 export default async function ProjectsPage() {
-  const allTasks = await getTasks();
+  const [allTasks, completedTasks] = await Promise.all([
+    getTasks(),
+    getCompletedTasks(),
+  ]);
+  const completedByParent = groupCompletedByParent(completedTasks);
 
   const projectTasks = allTasks.filter((t) => t.is_project);
   const active = projectTasks.filter(
@@ -78,6 +83,7 @@ export default async function ProjectsPage() {
                     categories={categories}
                     contexts={contextOptions}
                     allTasks={allTasks}
+                    completedChildren={completedByParent.get(p.id) ?? []}
                   />
                 ))}
               </ul>
@@ -101,6 +107,7 @@ export default async function ProjectsPage() {
                     categories={categories}
                     contexts={contextOptions}
                     allTasks={allTasks}
+                    completedChildren={completedByParent.get(p.id) ?? []}
                   />
                 ))}
               </ul>
@@ -122,6 +129,7 @@ export default async function ProjectsPage() {
                     categories={categories}
                     contexts={contextOptions}
                     allTasks={allTasks}
+                    completedChildren={completedByParent.get(p.id) ?? []}
                   />
                 ))}
               </ul>

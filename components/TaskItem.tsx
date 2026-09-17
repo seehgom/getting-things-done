@@ -1,9 +1,16 @@
 "use client";
 
-import { useRef, useState, useTransition, type TransitionStartFunction } from "react";
+import {
+  useRef,
+  useState,
+  useTransition,
+  type DragEvent,
+  type TransitionStartFunction,
+} from "react";
 import {
   createTask,
   deleteTask,
+  reorderActions,
   setCategory,
   setIsProject,
   setNextAction,
@@ -19,6 +26,7 @@ import {
   LEVEL_OPTIONS,
   OFFENSE_DEFENSE_OPTIONS,
   STATUS_OPTIONS,
+  type CompletedTask,
   type Task,
 } from "@/lib/gtd";
 
@@ -36,12 +44,14 @@ export default function TaskItem({
   categories,
   contexts,
   allTasks = [],
+  completedChildren = [],
   defaultOpen = false,
 }: {
   task: Task;
   categories: string[];
   contexts: string[];
   allTasks?: Task[];
+  completedChildren?: CompletedTask[];
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -53,7 +63,6 @@ export default function TaskItem({
     : undefined;
   const children = task.is_project ? childrenOf(task.id, allTasks) : [];
   const nextChildren = children.filter((c) => c.is_next_action);
-  const futureChildren = children.filter((c) => !c.is_next_action);
   const availableProjects = allTasks.filter(
     (t) => t.is_project && t.id !== task.id
   );
@@ -321,16 +330,11 @@ export default function TaskItem({
           )}
 
           {children.length > 0 && (
-            <ul className="space-y-1">
-              {[...nextChildren, ...futureChildren].map((c) => (
-                <ActionRow
-                  key={c.id}
-                  action={c}
-                  isPending={isPending}
-                  startTransition={startTransition}
-                />
-              ))}
-            </ul>
+            <ActionsList
+              actions={children}
+              isPending={isPending}
+              startTransition={startTransition}
+            />
           )}
 
           <AddActionForm
@@ -338,6 +342,25 @@ export default function TaskItem({
             isPending={isPending}
             startTransition={startTransition}
           />
+
+          {completedChildren.length > 0 && (
+            <details>
+              <summary className="cursor-pointer text-[11px] text-muted">
+                ✓ Completed ({completedChildren.length})
+              </summary>
+              <ul className="mt-1 space-y-1">
+                {completedChildren.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center gap-1.5 rounded-md border border-card-border/60 bg-card-border/10 px-2 py-1 text-xs text-muted line-through"
+                  >
+                    <span aria-hidden>✓</span>
+                    <span className="flex-1 truncate">{c.task}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       )}
 
@@ -521,6 +544,68 @@ export default function TaskItem({
   );
 }
 
+function ActionsList({
+  actions,
+  isPending,
+  startTransition,
+}: {
+  actions: Task[];
+  isPending: boolean;
+  startTransition: TransitionStartFunction;
+}) {
+  const [order, setOrder] = useState<Task[]>(actions);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const idsKey = actions.map((a) => a.id).join(",");
+
+  // Resync local order whenever the server's set/order of actions changes
+  // (add, remove, or a reorder that finished round-tripping) — but not on
+  // every render, so an in-progress drag isn't fought mid-gesture. Adjusting
+  // state during render (React's recommended pattern for this) rather than
+  // in a useEffect avoids an extra commit showing the stale order first.
+  const [syncedKey, setSyncedKey] = useState(idsKey);
+  if (idsKey !== syncedKey) {
+    setSyncedKey(idsKey);
+    setOrder(actions);
+  }
+
+  function handleDragOver(e: DragEvent, overId: string) {
+    e.preventDefault();
+    if (!dragId || dragId === overId) return;
+    setOrder((prev) => {
+      const fromIndex = prev.findIndex((a) => a.id === dragId);
+      const toIndex = prev.findIndex((a) => a.id === overId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    startTransition(() => reorderActions(order.map((a) => a.id)));
+  }
+
+  return (
+    <ul className="space-y-1">
+      {order.map((c) => (
+        <li
+          key={c.id}
+          draggable
+          onDragStart={() => setDragId(c.id)}
+          onDragOver={(e) => handleDragOver(e, c.id)}
+          onDrop={(e) => e.preventDefault()}
+          onDragEnd={handleDragEnd}
+          className={dragId === c.id ? "opacity-40" : ""}
+        >
+          <ActionRow action={c} isPending={isPending} startTransition={startTransition} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function ActionRow({
   action,
   isPending,
@@ -536,15 +621,22 @@ function ActionRow({
   }
 
   return (
-    <li className="flex items-center gap-1.5 rounded-md border border-card-border bg-background px-2 py-1 text-xs">
+    <div className="flex items-center gap-1.5 rounded-md border border-card-border bg-background px-2 py-1 text-xs">
+      <span
+        aria-hidden
+        className="shrink-0 cursor-grab text-muted"
+        title="Drag to reorder"
+      >
+        ⠿
+      </span>
       <button
         type="button"
         onClick={() => startTransition(() => setStatus(action.id, "Done"))}
         disabled={isPending}
         title="Mark this action done"
-        className="shrink-0 rounded-full border border-card-border px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground"
+        className="shrink-0 rounded-md border border-card-border px-1.5 py-0.5 hover:bg-accent hover:text-accent-foreground"
       >
-        ✓
+        ✓ Done
       </button>
       <span className="flex-1 truncate">{action.task}</span>
       <button
@@ -565,11 +657,12 @@ function ActionRow({
         type="button"
         onClick={handleDeleteAction}
         disabled={isPending}
+        title="Delete this action"
         className="shrink-0 rounded-md px-1.5 py-0.5 text-danger hover:bg-danger-bg"
       >
         ✕
       </button>
-    </li>
+    </div>
   );
 }
 
