@@ -184,8 +184,11 @@ export async function setNextAction(id: string, isNext: boolean) {
   await updateTask(id, { is_next_action: isNext });
 }
 
-/** Persists a drag-and-drop reorder of a project's actions. */
-export async function reorderActions(orderedIds: string[]) {
+/** Persists a manual reorder (drag-and-drop or the move-up/move-to-top
+ * buttons) of any list of tasks — a project's actions, the dashboard's
+ * Inbox/Next Actions/Waiting/Someday lists, or the Projects page's lists.
+ * Each id's position in the array becomes its new `sort_order`. */
+export async function reorderTasks(orderedIds: string[]) {
   await requireUser();
 
   const supabase = supabaseServer();

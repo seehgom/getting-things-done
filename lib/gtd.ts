@@ -108,6 +108,24 @@ export function groupCompletedByParent(
   return map;
 }
 
+/**
+ * Applies a manual drag-and-drop/move-up order on top of whatever order
+ * the list already came in. `sort_order` (set by reorderTasks()) wins and
+ * sorts numerically; items nobody has manually reordered yet (sort_order
+ * is null) keep their existing relative order, since Array.sort is stable
+ * — so untouched items still reflect the caller's own default ordering
+ * (e.g. sortNextActions' priority score) until someone drags one.
+ */
+export function applyManualOrder<T extends { sort_order: number | null }>(
+  items: T[]
+): T[] {
+  return [...items].sort(
+    (a, b) =>
+      (a.sort_order ?? Number.MAX_SAFE_INTEGER) -
+      (b.sort_order ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
 export function isOverdue(t: Task): boolean {
   if (!t.due_date) return false;
   const today = new Date().toISOString().slice(0, 10);

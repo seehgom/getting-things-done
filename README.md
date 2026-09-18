@@ -10,9 +10,18 @@ describes: capture → clarify → organize → reflect → engage.
 - **Inbox** — captured but not yet clarified (no urgency, importance, or
   due date set).
 - **Next Actions** — clarified, actionable items grouped by category,
-  sorted by importance/urgency and due date.
+  sorted by importance/urgency and due date by default.
 - **Waiting For** — things you're expecting from someone else.
 - **Someday / Maybe** — not committed to right now, reviewed periodically.
+
+Every one of those four dashboard lists — plus the Active and
+Someday/Maybe lists on `/projects` — supports manual priority ordering:
+drag an item to move it, or use its ↑ (move up one) and ⤒ (move to top)
+buttons. A manually-set position always wins; anything you haven't
+touched keeps falling back to its normal default order (priority score
+for Next Actions, whatever order it was otherwise in for the rest) until
+you drag it. This is the same mechanism Projects already used for
+reordering a project's actions — see Data model below.
 - **Weekly Review** (`/review`) — a dedicated page for the book's "reflect"
   step: overdue items, stalled next actions, waiting-for follow-ups, and
   someday/maybe items ready to promote.
@@ -168,10 +177,21 @@ migration) points an action at the project task it belongs to.
 `tasks.is_next_action` flags whether an action is the one thing ready to
 do now — `setNextAction()` (`app/actions.ts`) unflags any other action
 under the same project first, so only one is ever "the" next action.
-`tasks.sort_order` (nullable integer) is the manual drag-and-drop order
-among a project's actions; `reorderActions()` persists it and
-`childrenOf()` (`lib/gtd.ts`) sorts by it (falling back to `created_at`
-for rows never reordered). Completing an action that was flagged next
+`tasks.sort_order` (nullable integer) is the manual drag-and-drop/move-up
+order — originally just among a project's actions, now used the same way
+for the dashboard's Inbox/Next Actions/Waiting/Someday lists and the
+Projects page's Active/Someday-Maybe lists. `reorderTasks()`
+(`app/actions.ts`) persists it for whatever list of task ids it's given;
+`childrenOf()` (`lib/gtd.ts`) sorts a project's actions by it (falling
+back to `created_at` for actions never reordered), and `applyManualOrder()`
+does the equivalent for every other reorderable list — a stable sort that
+only moves items with an explicit `sort_order`, so anything nobody has
+dragged yet keeps the list's normal default order. The drag-and-drop and
+move-up/move-to-top UI itself is `lib/useDragReorder.ts` (the shared
+drag-state logic) plus `components/SortableList.tsx` (a render-prop
+wrapper that hands each `TaskItem` its drag handlers via a `drag` prop,
+without SortableList needing to know what else that TaskItem is
+rendering). Completing an action that was flagged next
 (`completeTask()`) automatically flags whichever sibling is first in that
 order, so a project's "next" never goes empty on its own. Creating or
 reparenting a task under a project (`createTask()`/`updateTask()`) always

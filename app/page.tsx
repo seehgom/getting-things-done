@@ -3,9 +3,11 @@ import Link from "next/link";
 import FilterBar from "@/components/FilterBar";
 import QuickCapture from "@/components/QuickCapture";
 import Section from "@/components/Section";
+import SortableList from "@/components/SortableList";
 import TaskItem from "@/components/TaskItem";
 import { getCompletedTasks, getTasks } from "@/lib/tasks";
 import {
+  applyManualOrder,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   effectiveBucket,
@@ -68,7 +70,14 @@ export default async function DashboardPage({
     buckets[effectiveBucket(t, allTasks)].push(t);
   }
 
+  buckets.inbox = applyManualOrder(buckets.inbox);
+  buckets.waiting = applyManualOrder(buckets.waiting);
+  buckets.someday = applyManualOrder(buckets.someday);
+
   const nextByCategory = groupByCategory(sortNextActions(buckets.next));
+  for (const [key, items] of nextByCategory) {
+    nextByCategory.set(key, applyManualOrder(items));
+  }
 
   const firstName = user?.firstName ?? "there";
   const today = new Date().toLocaleDateString(undefined, {
@@ -136,9 +145,20 @@ export default async function DashboardPage({
           <EmptyState text="Inbox zero. Nothing waiting to be clarified." />
         ) : (
           <ul className="space-y-2">
-            {buckets.inbox.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
-            ))}
+            <SortableList items={buckets.inbox}>
+              {(t, drag, dragPending) => (
+                <TaskItem
+                  key={t.id}
+                  task={t}
+                  categories={categories}
+                  contexts={contextOptions}
+                  allTasks={allTasks}
+                  completedChildren={completedByParent.get(t.id) ?? []}
+                  drag={drag}
+                  dragPending={dragPending}
+                />
+              )}
+            </SortableList>
           </ul>
         )}
       </Section>
@@ -159,9 +179,20 @@ export default async function DashboardPage({
                   {category}
                 </h3>
                 <ul className="space-y-2">
-                  {items.map((t) => (
-                    <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
-                  ))}
+                  <SortableList items={items}>
+                    {(t, drag, dragPending) => (
+                      <TaskItem
+                        key={t.id}
+                        task={t}
+                        categories={categories}
+                        contexts={contextOptions}
+                        allTasks={allTasks}
+                        completedChildren={completedByParent.get(t.id) ?? []}
+                        drag={drag}
+                        dragPending={dragPending}
+                      />
+                    )}
+                  </SortableList>
                 </ul>
               </div>
             ))}
@@ -179,9 +210,20 @@ export default async function DashboardPage({
           <EmptyState text="Nothing pending on other people right now." />
         ) : (
           <ul className="space-y-2">
-            {buckets.waiting.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
-            ))}
+            <SortableList items={buckets.waiting}>
+              {(t, drag, dragPending) => (
+                <TaskItem
+                  key={t.id}
+                  task={t}
+                  categories={categories}
+                  contexts={contextOptions}
+                  allTasks={allTasks}
+                  completedChildren={completedByParent.get(t.id) ?? []}
+                  drag={drag}
+                  dragPending={dragPending}
+                />
+              )}
+            </SortableList>
           </ul>
         )}
       </Section>
@@ -197,9 +239,20 @@ export default async function DashboardPage({
           <EmptyState text="Nothing parked for someday." />
         ) : (
           <ul className="space-y-2">
-            {buckets.someday.map((t) => (
-              <TaskItem key={t.id} task={t} categories={categories} contexts={contextOptions} allTasks={allTasks} completedChildren={completedByParent.get(t.id) ?? []} />
-            ))}
+            <SortableList items={buckets.someday}>
+              {(t, drag, dragPending) => (
+                <TaskItem
+                  key={t.id}
+                  task={t}
+                  categories={categories}
+                  contexts={contextOptions}
+                  allTasks={allTasks}
+                  completedChildren={completedByParent.get(t.id) ?? []}
+                  drag={drag}
+                  dragPending={dragPending}
+                />
+              )}
+            </SortableList>
           </ul>
         )}
       </Section>

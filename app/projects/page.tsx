@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Section from "@/components/Section";
+import SortableList from "@/components/SortableList";
 import TaskItem from "@/components/TaskItem";
 import { getCompletedTasks, getTasks } from "@/lib/tasks";
 import {
+  applyManualOrder,
   CATEGORY_SUGGESTIONS,
   CONTEXT_SUGGESTIONS,
   effectiveBucket,
@@ -17,14 +19,15 @@ export default async function ProjectsPage() {
   const completedByParent = groupCompletedByParent(completedTasks);
 
   const projectTasks = allTasks.filter((t) => t.is_project);
-  const active = projectTasks.filter(
-    (p) => effectiveBucket(p, allTasks) === "next"
+  const active = applyManualOrder(
+    projectTasks.filter((p) => effectiveBucket(p, allTasks) === "next")
   );
-  const stalled = projectTasks.filter(
-    (p) => effectiveBucket(p, allTasks) === "someday"
+  const stalled = applyManualOrder(
+    projectTasks.filter((p) => effectiveBucket(p, allTasks) === "someday")
   );
   const other = projectTasks.filter(
-    (p) => !active.includes(p) && !stalled.includes(p)
+    (p) =>
+      !active.some((a) => a.id === p.id) && !stalled.some((s) => s.id === p.id)
   );
 
   const categoriesInUse = Array.from(
@@ -76,16 +79,20 @@ export default async function ProjectsPage() {
               <Empty text="No projects have a next action queued yet." />
             ) : (
               <ul className="space-y-2">
-                {active.map((p) => (
-                  <TaskItem
-                    key={p.id}
-                    task={p}
-                    categories={categories}
-                    contexts={contextOptions}
-                    allTasks={allTasks}
-                    completedChildren={completedByParent.get(p.id) ?? []}
-                  />
-                ))}
+                <SortableList items={active}>
+                  {(p, drag, dragPending) => (
+                    <TaskItem
+                      key={p.id}
+                      task={p}
+                      categories={categories}
+                      contexts={contextOptions}
+                      allTasks={allTasks}
+                      completedChildren={completedByParent.get(p.id) ?? []}
+                      drag={drag}
+                      dragPending={dragPending}
+                    />
+                  )}
+                </SortableList>
               </ul>
             )}
           </Section>
@@ -100,16 +107,20 @@ export default async function ProjectsPage() {
               <Empty text="Nothing stalled — every project has a next action." />
             ) : (
               <ul className="space-y-2">
-                {stalled.map((p) => (
-                  <TaskItem
-                    key={p.id}
-                    task={p}
-                    categories={categories}
-                    contexts={contextOptions}
-                    allTasks={allTasks}
-                    completedChildren={completedByParent.get(p.id) ?? []}
-                  />
-                ))}
+                <SortableList items={stalled}>
+                  {(p, drag, dragPending) => (
+                    <TaskItem
+                      key={p.id}
+                      task={p}
+                      categories={categories}
+                      contexts={contextOptions}
+                      allTasks={allTasks}
+                      completedChildren={completedByParent.get(p.id) ?? []}
+                      drag={drag}
+                      dragPending={dragPending}
+                    />
+                  )}
+                </SortableList>
               </ul>
             )}
           </Section>

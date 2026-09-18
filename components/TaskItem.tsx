@@ -10,7 +10,7 @@ import {
 import {
   createTask,
   deleteTask,
-  reorderActions,
+  reorderTasks,
   setCategory,
   setIsProject,
   setNextAction,
@@ -29,6 +29,7 @@ import {
   type CompletedTask,
   type Task,
 } from "@/lib/gtd";
+import type { DragControls } from "@/components/SortableList";
 
 function levelBadgeClass(level: string | null) {
   const v = (level || "").toLowerCase();
@@ -46,6 +47,8 @@ export default function TaskItem({
   allTasks = [],
   completedChildren = [],
   defaultOpen = false,
+  drag,
+  dragPending = false,
 }: {
   task: Task;
   categories: string[];
@@ -53,6 +56,10 @@ export default function TaskItem({
   allTasks?: Task[];
   completedChildren?: CompletedTask[];
   defaultOpen?: boolean;
+  /** Supplied by SortableList when this task is part of a reorderable
+   * list — adds a drag handle plus move-up/move-to-top buttons. */
+  drag?: DragControls;
+  dragPending?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [isPending, startTransition] = useTransition();
@@ -108,10 +115,28 @@ export default function TaskItem({
   }
 
   return (
-    <li className="rounded-lg border border-card-border bg-card px-3 py-2.5 text-sm shadow-sm">
+    <li
+      draggable={drag?.draggable}
+      onDragStart={drag?.onDragStart}
+      onDragOver={drag?.onDragOver}
+      onDrop={drag ? (e) => e.preventDefault() : undefined}
+      onDragEnd={drag?.onDragEnd}
+      className={`rounded-lg border border-card-border bg-card px-3 py-2.5 text-sm shadow-sm ${
+        drag?.dragActive ? "opacity-40" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
+            {drag && (
+              <span
+                aria-hidden
+                className="cursor-grab text-muted"
+                title="Drag to reorder"
+              >
+                ⠿
+              </span>
+            )}
             <span className="font-medium">{task.task}</span>
             <span className="rounded-full border border-card-border px-2 py-0.5 text-[11px] text-muted">
               {task.category}
@@ -182,6 +207,28 @@ export default function TaskItem({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {drag?.onMoveToTop && (
+            <button
+              type="button"
+              onClick={drag.onMoveToTop}
+              disabled={dragPending}
+              title="Move to top"
+              className="rounded-md px-1.5 py-1 text-xs text-muted hover:bg-card-border/40"
+            >
+              ⤒
+            </button>
+          )}
+          {drag?.onMoveUp && (
+            <button
+              type="button"
+              onClick={drag.onMoveUp}
+              disabled={dragPending}
+              title="Move up"
+              className="rounded-md px-1.5 py-1 text-xs text-muted hover:bg-card-border/40"
+            >
+              ↑
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -584,7 +631,7 @@ function ActionsList({
 
   function handleDragEnd() {
     setDragId(null);
-    startTransition(() => reorderActions(order.map((a) => a.id)));
+    startTransition(() => reorderTasks(order.map((a) => a.id)));
   }
 
   return (
