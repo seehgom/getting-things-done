@@ -1,15 +1,16 @@
 "use client";
 
-import { useTransition, type DragEvent, type ReactNode } from "react";
+import { useTransition } from "react";
 import { reorderTasks } from "@/app/actions";
 import { useDragReorder } from "@/lib/useDragReorder";
-import type { Task } from "@/lib/gtd";
+import TaskItem from "@/components/TaskItem";
+import type { CompletedTask, Task } from "@/lib/gtd";
 
 export type DragControls = {
   draggable: true;
   dragActive: boolean;
   onDragStart: () => void;
-  onDragOver: (e: DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
   onMoveUp?: () => void;
   onMoveToTop?: () => void;
@@ -17,17 +18,24 @@ export type DragControls = {
 
 /**
  * Wraps a list of tasks with manual drag-and-drop + move-up/move-to-top
- * reordering, persisted via reorderTasks(). Renders nothing of its own —
- * `children` returns each item's own element (e.g. a <TaskItem key={...}
- * .../>), so the caller keeps full control of the surrounding <ul>/<li>
- * structure and whatever other props each item needs.
+ * reordering, persisted via reorderTasks(). Renders each task as a
+ * TaskItem directly (rather than taking a render-prop) because a Server
+ * Component can't pass a plain function across the client boundary as a
+ * prop — only serializable data (arrays, plain objects, ...) is allowed,
+ * so this needs to own the TaskItem rendering itself.
  */
 export default function SortableList({
   items,
-  children,
+  categories,
+  contexts,
+  allTasks,
+  completedByParent,
 }: {
   items: Task[];
-  children: (task: Task, drag: DragControls, isPending: boolean) => ReactNode;
+  categories: string[];
+  contexts: string[];
+  allTasks: Task[];
+  completedByParent: Record<string, CompletedTask[]>;
 }) {
   const [isPending, startTransition] = useTransition();
   const { order, dragId, handleDragStart, handleDragOver, handleDragEnd, moveUp, moveToTop } =
@@ -35,10 +43,16 @@ export default function SortableList({
 
   return (
     <>
-      {order.map((task, index) =>
-        children(
-          task,
-          {
+      {order.map((task, index) => (
+        <TaskItem
+          key={task.id}
+          task={task}
+          categories={categories}
+          contexts={contexts}
+          allTasks={allTasks}
+          completedChildren={completedByParent[task.id] ?? []}
+          dragPending={isPending}
+          drag={{
             draggable: true,
             dragActive: dragId === task.id,
             onDragStart: () => handleDragStart(task.id),
@@ -46,10 +60,9 @@ export default function SortableList({
             onDragEnd: handleDragEnd,
             onMoveUp: index > 0 ? () => moveUp(task.id) : undefined,
             onMoveToTop: index > 0 ? () => moveToTop(task.id) : undefined,
-          },
-          isPending
-        )
-      )}
+          }}
+        />
+      ))}
     </>
   );
 }

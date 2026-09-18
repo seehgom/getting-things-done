@@ -16,7 +16,9 @@ export default async function ProjectsPage() {
     getTasks(),
     getCompletedTasks(),
   ]);
-  const completedByParent = groupCompletedByParent(completedTasks);
+  // A Client Component can only receive serializable props, not a Map, so
+  // this is handed to SortableList as a plain object.
+  const completedByParent = Object.fromEntries(groupCompletedByParent(completedTasks));
 
   const projectTasks = allTasks.filter((t) => t.is_project);
   const active = applyManualOrder(
@@ -79,20 +81,13 @@ export default async function ProjectsPage() {
               <Empty text="No projects have a next action queued yet." />
             ) : (
               <ul className="space-y-2">
-                <SortableList items={active}>
-                  {(p, drag, dragPending) => (
-                    <TaskItem
-                      key={p.id}
-                      task={p}
-                      categories={categories}
-                      contexts={contextOptions}
-                      allTasks={allTasks}
-                      completedChildren={completedByParent.get(p.id) ?? []}
-                      drag={drag}
-                      dragPending={dragPending}
-                    />
-                  )}
-                </SortableList>
+                <SortableList
+                  items={active}
+                  categories={categories}
+                  contexts={contextOptions}
+                  allTasks={allTasks}
+                  completedByParent={completedByParent}
+                />
               </ul>
             )}
           </Section>
@@ -107,20 +102,13 @@ export default async function ProjectsPage() {
               <Empty text="Nothing stalled — every project has a next action." />
             ) : (
               <ul className="space-y-2">
-                <SortableList items={stalled}>
-                  {(p, drag, dragPending) => (
-                    <TaskItem
-                      key={p.id}
-                      task={p}
-                      categories={categories}
-                      contexts={contextOptions}
-                      allTasks={allTasks}
-                      completedChildren={completedByParent.get(p.id) ?? []}
-                      drag={drag}
-                      dragPending={dragPending}
-                    />
-                  )}
-                </SortableList>
+                <SortableList
+                  items={stalled}
+                  categories={categories}
+                  contexts={contextOptions}
+                  allTasks={allTasks}
+                  completedByParent={completedByParent}
+                />
               </ul>
             )}
           </Section>
@@ -140,7 +128,7 @@ export default async function ProjectsPage() {
                     categories={categories}
                     contexts={contextOptions}
                     allTasks={allTasks}
-                    completedChildren={completedByParent.get(p.id) ?? []}
+                    completedChildren={completedByParent[p.id] ?? []}
                   />
                 ))}
               </ul>
