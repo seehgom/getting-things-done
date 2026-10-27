@@ -7,7 +7,7 @@ import {
   updateVoiceNoteAction,
 } from "@/app/voiceNoteActions";
 import { CATEGORY_SUGGESTIONS } from "@/lib/gtd";
-import { parseLinks } from "@/lib/links";
+import { parseLinks, splitOnUrls } from "@/lib/links";
 import type { VoiceNote } from "@/lib/voiceNotes";
 
 const ARTIFACT_TYPE_SUGGESTIONS = ["doc", "pdf", "sheet", "slides", "link", "image"];
@@ -27,6 +27,30 @@ function artifactIcon(type: string | null) {
     default:
       return "🔗";
   }
+}
+
+/** Renders any URL inside free text as a real link that opens in a new
+ * tab — e.g. a YouTube link buried mid-paragraph in a note. */
+function Linkify({ text }: { text: string }) {
+  return (
+    <>
+      {splitOnUrls(text).map((seg, i) =>
+        seg.url ? (
+          <a
+            key={i}
+            href={seg.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent underline hover:no-underline"
+          >
+            {seg.text}
+          </a>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        )
+      )}
+    </>
+  );
 }
 
 export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
@@ -53,7 +77,9 @@ export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span aria-hidden>{artifactIcon(note.artifact_type)}</span>
-            <span className="font-medium">{note.description}</span>
+            <span className="font-medium">
+              <Linkify text={note.description} />
+            </span>
             {note.category && (
               <span className="rounded-full border border-card-border px-2 py-0.5 text-[11px] text-muted">
                 {note.category}
@@ -79,7 +105,11 @@ export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
               })}
             </span>
           </div>
-          {note.notes && <p className="mt-1 text-xs text-muted">{note.notes}</p>}
+          {note.notes && (
+            <p className="mt-1 whitespace-pre-wrap text-xs text-muted">
+              <Linkify text={note.notes} />
+            </p>
+          )}
         </div>
       </div>
 

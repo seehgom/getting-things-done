@@ -69,7 +69,11 @@ reordering a project's actions — see Data model below.
   renders every link `drive_link` actually contains — voice chat sometimes
   records several as free text (`"Label: url | Label: url"`) rather than
   one URL, which `parseLinks()` (`lib/links.ts`) splits into its own
-  working link per label instead of one broken combined href.
+  working link per label instead of one broken combined href. Any URL
+  embedded inside an entry's description or notes text — e.g. a YouTube
+  link voice chat dropped mid-paragraph — is also linkified
+  (`splitOnUrls()`) so it's clickable there too, opening in a new tab
+  (`target="_blank"`) rather than navigating away from the page.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
