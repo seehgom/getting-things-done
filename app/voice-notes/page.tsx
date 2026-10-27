@@ -1,6 +1,7 @@
 import Section from "@/components/Section";
 import NewVoiceNoteForm from "@/components/NewVoiceNoteForm";
 import VoiceNoteItem from "@/components/VoiceNoteItem";
+import { CLAUDE_ARTIFACTS_FOLDER_URL } from "@/lib/links";
 import { getVoiceNotes } from "@/lib/voiceNotes";
 
 export default async function VoiceNotesPage({
@@ -34,6 +35,23 @@ export default async function VoiceNotesPage({
           description and a link to open it.
         </p>
       </div>
+
+      <a
+        href={CLAUDE_ARTIFACTS_FOLDER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 text-sm shadow-sm hover:border-accent"
+      >
+        <span>
+          <span aria-hidden>📁</span> Browse the{" "}
+          <span className="font-medium">Claude Artifacts</span> folder
+          directly in Google Drive — every file voice chat has uploaded
+          lives here, even if an entry below has no link or a broken one.
+        </span>
+        <span aria-hidden className="shrink-0 text-muted">
+          ↗
+        </span>
+      </a>
 
       {categories.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">

@@ -60,7 +60,7 @@ export default function NewVoiceNoteForm() {
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <input
             name="drive_link"
-            type="url"
+            type="text"
             placeholder="Link (Drive, product, …)"
             className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />

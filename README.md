@@ -64,7 +64,12 @@ reordering a project's actions — see Data model below.
   a generated doc/PDF uploaded to Drive, a product search's results, a
   link it found. Voice chat writes these directly into the `voice_notes`
   table (see Data model below); this page is where you browse, filter by
-  category, mark one reviewed, or add an entry by hand.
+  category, mark one reviewed, or add an entry by hand. A page-top link
+  always opens the Claude Artifacts Drive folder directly, and each entry
+  renders every link `drive_link` actually contains — voice chat sometimes
+  records several as free text (`"Label: url | Label: url"`) rather than
+  one URL, which `parseLinks()` (`lib/links.ts`) splits into its own
+  working link per label instead of one broken combined href.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -220,6 +225,9 @@ Voice Notes reads/writes `public.voice_notes` — `description`,
 `category`, `project` (free text), `status` (`Open`/`Done`), `notes`.
 This table and its RLS policy already existed (populated by Claude's
 voice chat) before this app added a UI for it — see Security below.
+`drive_link` is free text, not a validated URL column — the Edit form's
+Link field is a plain text input (not `type="url"`) so it doesn't reject
+the multi-link format voice chat sometimes writes.
 
 ## Security
 

@@ -7,6 +7,7 @@ import {
   updateVoiceNoteAction,
 } from "@/app/voiceNoteActions";
 import { CATEGORY_SUGGESTIONS } from "@/lib/gtd";
+import { parseLinks } from "@/lib/links";
 import type { VoiceNote } from "@/lib/voiceNotes";
 
 const ARTIFACT_TYPE_SUGGESTIONS = ["doc", "pdf", "sheet", "slides", "link", "image"];
@@ -32,6 +33,7 @@ export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const done = (note.status || "").toLowerCase() === "done";
+  const links = parseLinks(note.drive_link);
 
   function handleDelete() {
     if (!confirm(`Delete "${note.description}"?`)) return;
@@ -83,16 +85,17 @@ export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
 
       {!open && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {note.drive_link && (
+          {links.map((link, i) => (
             <a
-              href={note.drive_link}
+              key={i}
+              href={link.url}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-md border border-card-border px-2 py-1 text-xs hover:bg-accent hover:text-accent-foreground"
             >
-              Open link ↗
+              {link.label === "Open" ? "Open link" : link.label} ↗
             </a>
-          )}
+          ))}
           <button
             type="button"
             onClick={() =>
@@ -138,12 +141,14 @@ export default function VoiceNoteItem({ note }: { note: VoiceNote }) {
             />
           </label>
           <label className="col-span-2 flex flex-col gap-1 sm:col-span-4">
-            <span className="text-[11px] text-muted">Link</span>
+            <span className="text-[11px] text-muted">
+              Link(s) — one URL, or multiple as &ldquo;Label: url | Label: url&rdquo;
+            </span>
             <input
               name="drive_link"
-              type="url"
+              type="text"
               defaultValue={note.drive_link ?? ""}
-              placeholder="https://drive.google.com/…"
+              placeholder="https://drive.google.com/… or Label: https://… | Label: https://…"
               className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent"
             />
           </label>
