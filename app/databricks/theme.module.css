@@ -1,0 +1,35 @@
+/* Design tokens from the handoff doc's prototype — scoped to this page
+   only, so the rest of the app keeps its own look. */
+.theme {
+  --db-bg: #edf1f4;
+  --db-surface: #ffffff;
+  --db-ink: #12202b;
+  --db-muted: #556575;
+  --db-line: #d2dae1;
+  --db-accent: #0b6a72;
+  --db-accent-soft: #d8edef;
+  --db-done: #1d8658;
+
+  background: var(--db-bg);
+  color: var(--db-ink);
+  font-family: var(--font-plex-sans), sans-serif;
+}
+
+.theme :global(h1),
+.theme :global(h2),
+.theme :global(h3) {
+  font-family: var(--font-bricolage), sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme {
+    --db-bg: #0e151b;
+    --db-surface: #16202a;
+    --db-ink: #e5ecf1;
+    --db-muted: #90a2b1;
+    --db-line: #27343f;
+    --db-accent: #4fc2b9;
+    --db-accent-soft: #16363a;
+    --db-done: #52c58f;
+  }
+}

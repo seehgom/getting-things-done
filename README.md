@@ -74,6 +74,19 @@ reordering a project's actions — see Data model below.
   link voice chat dropped mid-paragraph — is also linkified
   (`splitOnUrls()`) so it's clickable there too, opening in a new tab
   (`target="_blank"`) rather than navigating away from the page.
+- **Databricks** (`/databricks`) — a study tracker for the Databricks
+  Certified Generative AI Engineer Associate exam, reading the
+  `cert_study_tree` table: a self-referencing `exam` → `section` → `topic`
+  → `resource` tree, with each section's exam weight shown as a
+  proportional, tappable weight strip and a progress bar driven by which
+  topics are checked off. Resources are grouped and shown at the section
+  level (not per topic — several resources only make sense as "where to
+  learn this section," not one specific topic). This page has its own
+  visual theme (`app/databricks/theme.module.css`, `next/font/google`'s
+  Bricolage Grotesque/IBM Plex Sans/IBM Plex Mono), scoped so it doesn't
+  affect the rest of the app's look. Ticking a topic calls the
+  `setTopicStatus()` Server Action (`app/databricks/actions.ts`), which
+  only ever updates rows where `level = 'topic'`.
 
 Both the Inbox/Next-Actions/Waiting-For/Someday pages have a **filter bar**
 for narrowing the visible tasks down to
@@ -232,6 +245,20 @@ voice chat) before this app added a UI for it — see Security below.
 `drive_link` is free text, not a validated URL column — the Edit form's
 Link field is a plain text input (not `type="url"`) so it doesn't reject
 the multi-link format voice chat sometimes writes.
+
+The Databricks page reads/writes `public.cert_study_tree` — `exam`,
+`parent_id` (self-referencing), `level` (`exam`/`section`/`topic`/
+`resource`), `title`, `weight_pct`, `resource_type`, `url`, `notes`,
+`sort_order`, `status` (`todo`/`done`, topic rows only). This table is
+shared with another, unrelated personal tool against the same Supabase
+project and isn't owned by this app — `lib/studyTree.ts` only reads rows
+for `exam = 'genai-engineer-associate'` and `setTopicStatus()` only ever
+writes `status` on `level = 'topic'` rows, so this app can't disturb
+whatever else uses the table. `cert_study_tree` has RLS enabled but no
+policies defined, which means default-deny for any RLS-constrained
+client (anon or authenticated); this app, like everything else here,
+only ever reads/writes it server-side with the service-role key, which
+bypasses RLS by design.
 
 ## Security
 

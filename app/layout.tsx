@@ -73,6 +73,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   >
                     Voice Notes
                   </Link>
+                  <Link
+                    href="/databricks"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Databricks
+                  </Link>
                   <UserButton />
                 </Show>
                 <Show when="signed-out">
