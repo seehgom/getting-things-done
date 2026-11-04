@@ -79,6 +79,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   >
                     Databricks
                   </Link>
+                  <Link
+                    href="/agenda-1"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Agenda 1
+                  </Link>
+                  <Link
+                    href="/agenda-2"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Agenda 2
+                  </Link>
+                  <Link
+                    href="/agenda-3"
+                    className="text-muted hover:text-foreground"
+                  >
+                    Agenda 3
+                  </Link>
                   <UserButton />
                 </Show>
                 <Show when="signed-out">

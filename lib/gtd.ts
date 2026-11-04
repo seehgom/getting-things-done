@@ -24,6 +24,13 @@ export type Task = {
    * `parent_task_id`. Null for rows never reordered — falls back to
    * created_at. */
   sort_order: number | null;
+  /** The day this task is planned to be worked on — a day-planning
+   * assignment set from the Daily Agenda pages, distinct from `due_date`
+   * (a deadline). Null means not scheduled onto any day's agenda. */
+  agenda_date: string | null;
+  /** Optional time-of-day bucket for the agenda (e.g. "Morning"), used by
+   * the time-blocked agenda layout. Null means unspecified ("Anytime"). */
+  agenda_slot: string | null;
   created_at: string;
   updated_at: string;
 };
