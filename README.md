@@ -74,6 +74,25 @@ reordering a project's actions — see Data model below.
   link voice chat dropped mid-paragraph — is also linkified
   (`splitOnUrls()`) so it's clickable there too, opening in a new tab
   (`target="_blank"`) rather than navigating away from the page.
+- **Daily Agenda** — three experimental page layouts for planning a single
+  day, all built on the same underlying idea: any task can be assigned to
+  a specific day (today or tomorrow, via the Today/Tomorrow tabs on each
+  page) and optionally a time-of-day block, separately from its
+  `due_date` (a deadline) — see Data model below. Pull an existing task
+  from your list onto the day, or quick-add a brand-new one straight onto
+  it; checking a task off completes it the same way as everywhere else
+  (it moves to History). These are three takes on the same feature meant
+  to be tried side by side, not three separate features — pick a
+  favorite and the other two can come out later:
+  - **Agenda 1** (`/agenda-1`) — a plain, drag-to-reorder checklist for
+    the day. Closest to a simple paper to-do list.
+  - **Agenda 2** (`/agenda-2`) — the day's tasks split into columns by
+    category (Work/Home/Shopping/…), so you can see how the day balances
+    across areas of focus at a glance; each column has its own quick-add.
+  - **Agenda 3** (`/agenda-3`) — the day laid out across Morning/
+    Afternoon/Evening/Anytime blocks instead of by category; moving a
+    task between blocks is a dropdown rather than drag-and-drop, for
+    comparison.
 - **Databricks** (`/databricks`) — a study tracker for the Databricks
   Certified Generative AI Engineer Associate exam, reading the
   `cert_study_tree` table: a self-referencing `exam` → `section` → `topic`
@@ -245,6 +264,23 @@ voice chat) before this app added a UI for it — see Security below.
 `drive_link` is free text, not a validated URL column — the Edit form's
 Link field is a plain text input (not `type="url"`) so it doesn't reject
 the multi-link format voice chat sometimes writes.
+
+The three Daily Agenda pages read/write the existing `public.tasks` table
+via two added columns: `agenda_date` (nullable `date` — the day a task is
+planned for) and `agenda_slot` (nullable free text — a time-of-day bucket
+like `Morning`, used only by Agenda 3). Both are deliberately separate
+from `due_date`: a due date is a deadline, an agenda assignment is "this
+is what I'm doing that day," and a task can have either, both, or
+neither. `completed_tasks` mirrors both columns for the same reason it
+already mirrors `is_project`/`parent_task_id`/etc. — so `completeTask()`
+can copy a full row across without dropping fields. Completing an
+agenda'd task removes it from the day's list the same way it leaves every
+other list, since it's no longer in `tasks` at all. `lib/agenda.ts` has
+the shared date/filtering helpers; `app/agenda/actions.ts` has the two
+actions specific to scheduling (`scheduleTask`, `createAgendaTask`) —
+reordering, completing, and deleting reuse the existing `tasks` actions
+since `sort_order` is already a per-list manual order, the same way the
+dashboard's Inbox/Next/Waiting/Someday lists each reuse it independently.
 
 The Databricks page reads/writes `public.cert_study_tree` — `exam`,
 `parent_id` (self-referencing), `level` (`exam`/`section`/`topic`/
