@@ -80,22 +80,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                     Databricks
                   </Link>
                   <Link
-                    href="/agenda-1"
+                    href="/agenda"
                     className="text-muted hover:text-foreground"
                   >
-                    Agenda 1
+                    Agenda
                   </Link>
                   <Link
-                    href="/agenda-2"
+                    href="/harada"
                     className="text-muted hover:text-foreground"
                   >
-                    Agenda 2
-                  </Link>
-                  <Link
-                    href="/agenda-3"
-                    className="text-muted hover:text-foreground"
-                  >
-                    Agenda 3
+                    Harada Method
                   </Link>
                   <UserButton />
                 </Show>
