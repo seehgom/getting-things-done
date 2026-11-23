@@ -11,9 +11,7 @@ async function requireUser() {
 }
 
 function revalidateAgendaPages() {
-  revalidatePath("/agenda-1");
-  revalidatePath("/agenda-2");
-  revalidatePath("/agenda-3");
+  revalidatePath("/agenda");
   revalidatePath("/");
 }
 

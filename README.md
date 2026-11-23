@@ -74,25 +74,35 @@ reordering a project's actions — see Data model below.
   link voice chat dropped mid-paragraph — is also linkified
   (`splitOnUrls()`) so it's clickable there too, opening in a new tab
   (`target="_blank"`) rather than navigating away from the page.
-- **Daily Agenda** — three experimental page layouts for planning a single
-  day, all built on the same underlying idea: any task can be assigned to
-  a specific day (today or tomorrow, via the Today/Tomorrow tabs on each
-  page) and optionally a time-of-day block, separately from its
-  `due_date` (a deadline) — see Data model below. Pull an existing task
-  from your list onto the day, or quick-add a brand-new one straight onto
-  it; checking a task off completes it the same way as everywhere else
-  (it moves to History). These are three takes on the same feature meant
-  to be tried side by side, not three separate features — pick a
-  favorite and the other two can come out later:
-  - **Agenda 1** (`/agenda-1`) — a plain, drag-to-reorder checklist for
-    the day. Closest to a simple paper to-do list.
-  - **Agenda 2** (`/agenda-2`) — the day's tasks split into columns by
-    category (Work/Home/Shopping/…), so you can see how the day balances
-    across areas of focus at a glance; each column has its own quick-add.
-  - **Agenda 3** (`/agenda-3`) — the day laid out across Morning/
-    Afternoon/Evening/Anytime blocks instead of by category; moving a
-    task between blocks is a dropdown rather than drag-and-drop, for
-    comparison.
+- **Daily Agenda** (`/agenda`) — plans a single day (today or tomorrow,
+  via the Today/Tomorrow tabs) by laying tasks out across Morning/
+  Afternoon/Evening/Anytime blocks. Any task can be assigned to a day and
+  block — separately from its `due_date` (a deadline) — see Data model
+  below. Pull an existing task from your list onto the day, or quick-add
+  a brand-new one straight onto a block; checking a task off completes it
+  the same way as everywhere else in the app (it moves to History). This
+  started as three layouts tried side by side (a plain checklist, a
+  category board, and this time-blocked schedule) — this one's the
+  keeper, the other two were removed once picked.
+- **Harada Method — Goal Matrix** (`/harada`) — Takashi Harada's "Open
+  Window 64" goal-achievement matrix (the same one Shohei Ohtani used):
+  one main goal, broken into 8 key elements, each broken into 8 specific
+  action items (64 cells total). `/harada` lists your goals (there can be
+  more than one, each with its own matrix); opening one at `/harada/[id]`
+  shows the full 8×8 grid — click any element title or action-item cell
+  to edit it, and it saves on blur rather than needing an explicit Save
+  button, since a 72-field form would be unworkable otherwise. Once an
+  action item is concrete enough to actually work, its "+ Add as task"
+  button promotes it straight into the normal `tasks` list (tagged in
+  its notes with which goal/element it came from) — the matrix is for
+  thinking the goal through, the task list is for doing the work.
+  Creating a goal pre-seeds its full grid of 8 elements × 8 items (all
+  empty) up front, specifically so every cell already has a stable row
+  to update — the backend is a plain get/add/update/delete API over
+  normalized rows (`lib/harada.ts`, `app/harada/actions.ts`), not a fixed
+  blob, so a future AI helper can fill in empty cells the same way the UI
+  does: read whichever ones are still blank and call the same update
+  actions a person would.
 - **Databricks** (`/databricks`) — a study tracker for the Databricks
   Certified Generative AI Engineer Associate exam, reading the
   `cert_study_tree` table: a self-referencing `exam` → `section` → `topic`
@@ -265,22 +275,42 @@ voice chat) before this app added a UI for it — see Security below.
 Link field is a plain text input (not `type="url"`) so it doesn't reject
 the multi-link format voice chat sometimes writes.
 
-The three Daily Agenda pages read/write the existing `public.tasks` table
-via two added columns: `agenda_date` (nullable `date` — the day a task is
-planned for) and `agenda_slot` (nullable free text — a time-of-day bucket
-like `Morning`, used only by Agenda 3). Both are deliberately separate
-from `due_date`: a due date is a deadline, an agenda assignment is "this
-is what I'm doing that day," and a task can have either, both, or
-neither. `completed_tasks` mirrors both columns for the same reason it
-already mirrors `is_project`/`parent_task_id`/etc. — so `completeTask()`
-can copy a full row across without dropping fields. Completing an
-agenda'd task removes it from the day's list the same way it leaves every
-other list, since it's no longer in `tasks` at all. `lib/agenda.ts` has
-the shared date/filtering helpers; `app/agenda/actions.ts` has the two
-actions specific to scheduling (`scheduleTask`, `createAgendaTask`) —
-reordering, completing, and deleting reuse the existing `tasks` actions
-since `sort_order` is already a per-list manual order, the same way the
+Daily Agenda reads/writes the existing `public.tasks` table via two added
+columns: `agenda_date` (nullable `date` — the day a task is planned for)
+and `agenda_slot` (nullable free text — a time-of-day bucket like
+`Morning`). Both are deliberately separate from `due_date`: a due date is
+a deadline, an agenda assignment is "this is what I'm doing that day,"
+and a task can have either, both, or neither. `completed_tasks` mirrors
+both columns for the same reason it already mirrors
+`is_project`/`parent_task_id`/etc. — so `completeTask()` can copy a full
+row across without dropping fields. Completing an agenda'd task removes
+it from the day's list the same way it leaves every other list, since
+it's no longer in `tasks` at all. `lib/agenda.ts` has the shared
+date/filtering helpers; `app/agenda/actions.ts` has the two actions
+specific to scheduling (`scheduleTask`, `createAgendaTask`) — reordering,
+completing, and deleting reuse the existing `tasks` actions since
+`sort_order` is already a per-list manual order, the same way the
 dashboard's Inbox/Next/Waiting/Someday lists each reuse it independently.
+
+The Harada Method page owns three new tables: `harada_goals` (`title`,
+`why`, `target_date`, `status` — `Active`/`Achieved`/`Archived` —,
+`notes`), `harada_elements` (`goal_id`, `position` 1-8, `title`), and
+`harada_items` (`element_id`, `position` 1-8, `text`, `task_id` — a
+nullable FK into `public.tasks`, `on delete set null`). `createGoal()`
+inserts a goal plus all 8 elements and all 64 items up front (empty), so
+every cell is a real row with a stable id from the start — the rest of
+`app/harada/actions.ts` is just `updateElement()`/`updateItem()` by id
+(and `deleteGoal()`, which cascades to its elements/items via FK). This
+normalized, position-indexed shape — rather than one wide row or a JSON
+blob — is what makes "let AI fill this in later" tractable: a filler only
+ever needs to read `getHaradaMatrix()`, find cells where `title`/`text`
+is still null, and call the same update actions a person clicking into a
+cell would. `createTaskFromItem()` inserts a row into `tasks` from an
+item's text and sets `harada_items.task_id` to it; because the FK is
+`on delete set null`, an item automatically "forgets" its linked task if
+that task is later completed (`completeTask()` deletes it from `tasks`)
+or deleted outright — the item just reverts to showing "+ Add as task"
+rather than erroring.
 
 The Databricks page reads/writes `public.cert_study_tree` — `exam`,
 `parent_id` (self-referencing), `level` (`exam`/`section`/`topic`/
@@ -299,8 +329,9 @@ bypasses RLS by design.
 ## Security
 
 Every table this app touches (`tasks`, `completed_tasks`, `horizons`,
-`voice_notes`) has Postgres row-level security enabled with a policy
-restricted to Supabase's `authenticated` role — not `anon`, not `public`.
+`voice_notes`, `harada_goals`, `harada_elements`, `harada_items`) has
+Postgres row-level security enabled with a policy restricted to
+Supabase's `authenticated` role — not `anon`, not `public`.
 This app itself never uses Supabase's anon/publishable key anywhere; it
 only uses the service-role key (`SUPABASE_SERVICE_ROLE_KEY`), read
 exclusively in `lib/supabase/server.ts` and never sent to the browser —

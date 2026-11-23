@@ -1,15 +1,16 @@
 import { getTasks } from "@/lib/tasks";
 import {
+  AGENDA_SLOTS,
   formatAgendaDate,
   isoDate,
   tasksForDate,
   unscheduledOpenTasks,
 } from "@/lib/agenda";
-import { applyManualOrder, CATEGORY_SUGGESTIONS } from "@/lib/gtd";
-import AgendaChecklist from "@/components/agenda/AgendaChecklist";
+import { CATEGORY_SUGGESTIONS } from "@/lib/gtd";
+import AgendaTimeline from "@/components/agenda/AgendaTimeline";
 import DateTabs from "@/components/agenda/DateTabs";
 
-export default async function AgendaListPage({
+export default async function AgendaPage({
   searchParams,
 }: {
   searchParams: Promise<{ when?: string }>;
@@ -18,7 +19,7 @@ export default async function AgendaListPage({
   const when = sp.when === "tomorrow" ? "tomorrow" : "today";
   const date = isoDate(when === "tomorrow" ? 1 : 0);
 
-  const scheduled = applyManualOrder(tasksForDate(allTasks, date));
+  const scheduled = tasksForDate(allTasks, date);
   const unscheduled = unscheduledOpenTasks(allTasks);
   const categoriesInUse = Array.from(
     new Set(allTasks.map((t) => t.category?.trim()).filter(Boolean))
@@ -30,25 +31,25 @@ export default async function AgendaListPage({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">
-          Daily Agenda — Option 1: Checklist
-        </p>
         <h1 className="text-2xl font-semibold tracking-tight">
           {formatAgendaDate(date)}
         </h1>
         <p className="mt-1 text-sm text-muted">
-          A plain, drag-to-reorder list of what you&apos;re doing {when}.
-          Checking a task off moves it to History, same as everywhere else.
+          {when === "today" ? "Today" : "Tomorrow"}&apos;s plan, laid out
+          across Morning/Afternoon/Evening/Anytime. Pull a task from your
+          list or quick-add a new one straight onto a block; checking one
+          off completes it the same way as everywhere else in the app.
         </p>
       </div>
 
-      <DateTabs basePath="/agenda-1" when={when} />
+      <DateTabs basePath="/agenda" when={when} />
 
-      <AgendaChecklist
+      <AgendaTimeline
         date={date}
         scheduled={scheduled}
         unscheduled={unscheduled}
         categories={categories}
+        slots={AGENDA_SLOTS}
       />
     </div>
   );

@@ -15,9 +15,7 @@ function revalidateAll() {
   revalidatePath("/review");
   revalidatePath("/history");
   revalidatePath("/projects");
-  revalidatePath("/agenda-1");
-  revalidatePath("/agenda-2");
-  revalidatePath("/agenda-3");
+  revalidatePath("/agenda");
 }
 
 export async function createTask(formData: FormData) {
